@@ -61,7 +61,3 @@ def root():
     return {"mensagem": "Bem-vindo à HydroLifts API!"}
 
 
-@app.get("/healthz")
-def healthz():
-    # Healthcheck leve — Render bate aqui a cada 10 s.
-    return {"status": "ok"}
