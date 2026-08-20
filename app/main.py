@@ -52,6 +52,11 @@ app.include_router(analytics.router, tags=["Analytics"])
 
 
 @app.get("/")
+def health_check():
+    return {"status": "ok", "message": "HydroLifts API is running!"}
+
+
+@app.get("/")
 def root():
     return {"mensagem": "Bem-vindo à HydroLifts API!"}
 
