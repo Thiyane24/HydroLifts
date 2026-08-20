@@ -1,0 +1,35 @@
+# render.yaml — Infrastructure as Code
+# Deploy: https://dashboard.render.com/select-repo?blueprint=render.yaml
+#
+# AVISO: o Render Free Postgres expira em 30 dias. Para uso sério,
+#        recomenda-se o plano Starter ($7/mês) ou migrar para Railway.
+
+services:
+  - type: web
+    name: hydrolifts-api
+    runtime: python
+    plan: free           # muda para "starter" se quiseres evitar cold-starts
+    region: oregon
+    rootDir: .
+    buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir app"
+    healthCheckPath: /
+    autoDeploy: true
+    envVars:
+      - key: Secret_Key
+        generateValue: true   # gera string aleatória segura
+      - key: Hashing_Algorithm
+        value: HS256
+      - key: ACCESS_TOKEN_EXPIRE_MINUTES
+        value: "60"
+      - key: PYTHONPATH
+        value: /opt/render/project/src/app
+      - key: ALLOWED_ORIGINS
+        sync: false           # define manualmente para a URL do Vercel
+
+databases:
+  - name: hydrolifts-db
+    plan: free               # ⚠️ expira em 30 dias
+    databaseName: hydrolifts
+    user: hydrolifts
+    region: oregon
