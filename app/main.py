@@ -59,3 +59,9 @@ def root():
     return {"mensagem": "Bem-vindo à HydroLifts API!"}
 
 
+@app.get("/healthz")
+def healthz():
+    """Liveness probe — Render/Koyeb healthcheck."""
+    return {"status": "ok"}
+
+

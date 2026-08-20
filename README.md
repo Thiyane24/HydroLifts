@@ -1,198 +1,256 @@
-# HydroLifts 💪🏊
+<div align="center">
 
-App híbrida para rastrear treinos de **Ginásio & Natação** num único dashboard.
-Registas séries/exercícios, vês a tua carga semanal, e a app converte tudo
-para um *running-equivalent* (km) para comparar dias sem泳 nem halterofilismo.
+# HydroLifts
 
-> **Identidade visual — Pool Palette** (cyan + navy + mint). Mobile-first, WCAG AA,
-> feedback contínuo via `react-hot-toast`.
+**Track hybrid training — gym and swimming — in one dashboard.**
 
----
+A full-stack monorepo: a FastAPI + PostgreSQL backend with JWT auth, and a React + TypeScript single-page app styled with TailwindCSS. Designed mobile-first with the *Pool Palette* (cyan, navy, mint).
 
-## 🧱 Stack
+[Features](#-features) · [Architecture](#-architecture) · [Quickstart](#-quickstart) · [Environment](#-environment-variables) · [Deployment](#-deployment) · [API](#-api-reference) · [License](#-license)
 
-| Camada | Tecnologia |
-|---|---|
-| **Frontend** | React 18 · Vite 5 · TypeScript 5 · TailwindCSS 3 · lucide-react · axios · react-router-dom · react-hot-toast |
-| **Backend** | FastAPI 0.115 · SQLAlchemy 2 · Pydantic 2 · pwdlib (bcrypt) · PyJWT |
-| **Base de dados** | PostgreSQL 16 (prod) · SQLite (dev fallback) |
+</div>
 
 ---
 
-## 🗂️ Estrutura do monorepo
+## ✨ Features
+
+- **Hybrid training log** — record gym sets (name + sets + reps) and swim sets (distance + reps) on the same workout.
+- **Weekly summary** — totals (workouts, gym sets/reps, swim meters) and a *running-equivalent* in km (`1 km swim ≈ 4 km run`).
+- **Full CRUD on workouts** — create, list, edit (`PUT`) and delete (`DELETE`) from the dashboard.
+- **JWT auth** — `OAuth2PasswordRequestForm` login + bcrypt password hashing via `pwdlib`.
+- **Mobile-first UI** — bottom tab bar, 44×44 px touch targets, segmented toggle (gym vs swim), inline validation.
+- **Accessible** — semantic roles, `aria-*` labels, WCAG AA contrast, ESC-to-close on modals.
+- **Live feedback** — every async action surfaces a success or error toast.
+
+---
+
+## 🧱 Tech stack
+
+| Layer        | Technology                                                                                       |
+| ------------ | ------------------------------------------------------------------------------------------------ |
+| Frontend     | React 18 · Vite 5 · TypeScript 5 · TailwindCSS 3 · `lucide-react` · `axios` · `react-router-dom` · `react-hot-toast` |
+| Backend      | FastAPI 0.115 · SQLAlchemy 2 · Pydantic 2 · `pwdlib` (bcrypt) · PyJWT                             |
+| Persistence  | PostgreSQL 16 (production) · SQLite (local fallback only)                                         |
+| Deployment   | Vercel (frontend) · Koyeb / Railway / Render (backend)                                            |
+
+---
+
+## 📁 Project structure
 
 ```
 HydroLifts/
-├── app/                      # backend FastAPI
-│   ├── main.py               # entrypoint (lifespan → /healthz)
-│   ├── database.py           # engine + SessionLocal
-│   ├── models.py             # SQLAlchemy models
-│   ├── schemas.py            # Pydantic DTOs
-│   ├── security.py           # bcrypt + JWT
+├── app/                         # FastAPI backend
+│   ├── main.py                  # entrypoint · CORS · lifespan
+│   ├── database.py              # engine + SessionLocal
+│   ├── models.py                # SQLAlchemy ORM models
+│   ├── schemas.py               # Pydantic DTOs (Create / Update / Response)
+│   ├── security.py              # bcrypt hashing + JWT helpers
 │   └── routers/
-│       ├── auth.py
-│       ├── workouts.py
-│       └── analytics.py
-├── frontend/                 # SPA React/Vite
+│       ├── auth.py              # /auth/register · /auth/login
+│       ├── workouts.py          # /workouts CRUD
+│       └── analytics.py         # /analytics/weekly-summary
+│
+├── frontend/                    # React + Vite SPA
 │   ├── src/
-│   │   ├── pages/            # AuthView · DashboardView · LogWorkoutView
-│   │   ├── lib/api.ts        # axios + interceptors
-│   │   └── contexts/         # AuthContext
-│   ├── vercel.json           # rootDirectory: frontend
-│   └── vite.config.ts        # /api → :8000 (dev proxy)
-├── Dockerfile                # backend (python:3.11-slim)
-├── railway.toml              # backend (auto-detectado)
-├── render.yaml               # backend (legacy / alt deploy)
-├── vercel.json               # frontend (root: frontend/)
-└── requirements.txt          # deps backend pinadas
+│   │   ├── pages/               # AuthView · DashboardView · LogWorkoutView
+│   │   ├── components/          # Layout · WorkoutForm · ConfirmDialog · EditWorkoutModal
+│   │   ├── contexts/            # AuthContext (token + user)
+│   │   └── lib/api.ts           # axios client + interceptors
+│   ├── vercel.json              # build settings
+│   └── vite.config.ts           # dev proxy /api → :8000
+│
+├── Dockerfile                   # backend image (python:3.11-slim)
+├── render.yaml                  # Render blueprint
+├── railway.toml                 # Railway detection
+├── vercel.json                  # frontend rootDirectory
+├── package.json                 # monorepo marker (keeps Vercel out of the root)
+└── requirements.txt             # pinned backend dependencies
 ```
 
 ---
 
-## 🚀 Quickstart (local)
+## 🚀 Quickstart
+
+### Prerequisites
+
+- Python 3.11+
+- Node.js 18+ and npm
+- PostgreSQL 14+ (or skip and use the SQLite fallback for local-only work)
 
 ### 1. Backend
 
 ```bash
-# requer Python 3.11+
+# from the repo root
 python -m venv .venv
-source .venv/bin/activate    # Windows: .venv\Scripts\activate
+source .venv/bin/activate              # Windows: .venv\Scripts\activate
 pip install -r requirements.txt
 
-# variáveis mínimas (ver secção "Environment variables")
+# minimal environment for local dev
 export Secret_Key=$(python -c "import secrets; print(secrets.token_hex(32))")
 export Hashing_Algorithm=HS256
 export ACCESS_TOKEN_EXPIRE_MINUTES=60
+# optional — without it, the backend uses a local SQLite file
+# export DATABASE_URL=postgresql://user:pass@localhost:5432/hydrolifts
 
 uvicorn app.main:app --reload --port 8000
-# http://localhost:8000
-# http://localhost:8000/healthz  →  {"status":"ok"}
-# http://localhost:8000/docs      →  Swagger UI
 ```
 
-### 2. Frontend (noutro terminal)
+Useful URLs:
+
+| URL                            | Purpose                |
+| ------------------------------ | ---------------------- |
+| `http://localhost:8000/`        | Welcome payload        |
+| `http://localhost:8000/healthz` | Liveness probe         |
+| `http://localhost:8000/docs`    | Swagger UI             |
+| `http://localhost:8000/redoc`   | ReDoc                  |
+
+### 2. Frontend
 
 ```bash
 cd frontend
 npm install
+
+# point at the local backend
+echo "VITE_API_URL=http://localhost:8000" > .env
+
 npm run dev
-# http://localhost:5173
+# open http://localhost:5173
 ```
 
-O `vite.config.ts` faz proxy de `/api/*` → `http://localhost:8000`, por isso
-em dev não precisas de `.env`.
+In dev mode the SPA talks directly to `VITE_API_URL`. The `/api` proxy in `vite.config.ts` is kept as an escape hatch for setups that prefer a relative path.
 
 ---
 
 ## 🔐 Environment variables
 
-### Backend (obrigatórias)
+### Backend
 
-| Key | Descrição | Exemplo |
-|---|---|---|
-| `Secret_Key` | Chave JWT (≥ 32 bytes random) | `openssl rand -hex 32` |
-| `Hashing_Algorithm` | Algoritmo JWT | `HS256` |
-| `ACCESS_TOKEN_EXPIRE_MINUTES` | TTL do token | `60` |
-| `DATABASE_URL` | Connection string | `postgresql://user:pw@host/db?sslmode=require` |
-| `ALLOWED_ORIGINS` | Origens CORS (CSV) | `https://hydrolifts.vercel.app,https://hydrolifts.app` |
-
-Sem `DATABASE_URL`, o backend cai para SQLite em `./treinos.db` (bom para dev,
-**não** recomendado em produção — não persiste em deploys efémeros).
+| Key                          | Required | Description                                              |
+| ---------------------------- | -------- | -------------------------------------------------------- |
+| `Secret_Key`                 | ✅       | HMAC secret for JWT. Generate with `python -c "import secrets; print(secrets.token_hex(32))"`. |
+| `Hashing_Algorithm`          | ✅       | JWT algorithm. Use `HS256`.                              |
+| `ACCESS_TOKEN_EXPIRE_MINUTES`| ✅       | Token TTL in minutes (e.g. `60`).                        |
+| `DATABASE_URL`               | ⚠️       | PostgreSQL connection string. If unset, falls back to a **local, non-persistent SQLite file** — fine for dev, **never** for production. |
+| `ALLOWED_ORIGINS`            | ✅       | Comma-separated list of origins allowed by CORS. Must include the deployed Vercel URL. |
 
 ### Frontend
 
-| Key | Descrição | Default |
-|---|---|---|
-| `VITE_API_URL` | URL público do backend (sem trailing slash) | `/api` (usa proxy em dev) |
+| Key             | Required | Description                                                  |
+| --------------- | -------- | ------------------------------------------------------------ |
+| `VITE_API_URL`  | ✅       | Public URL of the backend, **without** trailing slash or `/api` suffix. Example: `https://api.hydrolifts.app`. |
 
 ---
 
-## ☁️ Deploy
+## ☁️ Deployment
 
 ### Frontend → Vercel
 
-`vercel.json` na raiz aponta para `frontend/` automaticamente.
+`vercel.json` at the repo root sets `rootDirectory: frontend`, so Vercel builds the SPA automatically.
 
-1. **Import Git Repository** → `Thiyane24/HydroLifts`
-2. Framework preset detetado: **Vite** (override se necessário)
-3. **Environment Variables** → `VITE_API_URL` = URL público do backend
-4. Deploy
+1. **Add New Project → Import** `Thiyane24/HydroLifts`.
+2. Framework preset: **Vite** (auto-detected).
+3. Add environment variable: `VITE_API_URL` = public backend URL.
+4. Deploy. Every push to `main` triggers a new build.
 
-Cada `git push` em `main` redesenha.
+### Backend → Koyeb (recommended, free tier)
 
-### Backend → Koyeb (recomendado, free tier)
-
-1. **Create Database** → PostgreSQL, region à escolha, plano **Free**
-   - copia a **Connection string** (inclui `?sslmode=require`)
-2. **Create Service** → Docker → repo `Thiyane24/HydroLifts` → branch `main`
-3. Instance: **Free (eco)**, Port: **8000**
-4. **Environment Variables**:
-   - `Secret_Key` → Generate
+1. **Create Database** → PostgreSQL, free plan. Copy the connection string (includes `?sslmode=require`).
+2. **Create Service** → Docker → repo `Thiyane24/HydroLifts` → branch `main`.
+3. Instance: **Free**, port `8000`.
+4. Environment variables:
+   - `Secret_Key` → **Generate**
    - `Hashing_Algorithm` → `HS256`
    - `ACCESS_TOKEN_EXPIRE_MINUTES` → `60`
-   - `DATABASE_URL` → connection string do passo 1
-   - `ALLOWED_ORIGINS` → URL do Vercel (preencher após primeiro deploy do frontend)
-5. Deploy
-6. **Settings → Domains** → gerar subdomínio `*.koyeb.app`
+   - `DATABASE_URL` → the connection string from step 1
+   - `ALLOWED_ORIGINS` → the Vercel URL once you have it
+5. Deploy. Note the public domain (`*.koyeb.app`).
 
-### Backend → Railway (alternativa)
+### Backend → Railway
 
-`railway.toml` + `Dockerfile` detetados automaticamente.
+`railway.toml` + `Dockerfile` are detected automatically.
 
-1. **New Project** → **Deploy from GitHub** → `Thiyane24/HydroLifts`
-2. Adicionar **Postgres plugin** (ou externo)
-3. **Variables** → mesmas do Koyeb acima (Railway expõe `DATABASE_URL` automaticamente)
-4. **Settings → Networking** → **Generate Domain**
+1. **New Project → Deploy from GitHub** → `Thiyane24/HydroLifts`.
+2. Add the **Postgres** plugin — Railway injects `DATABASE_URL` automatically.
+3. Add the remaining variables (`Secret_Key`, `Hashing_Algorithm`, `ACCESS_TOKEN_EXPIRE_MINUTES`, `ALLOWED_ORIGINS`).
+4. **Settings → Networking → Generate Domain**.
 
-### Backend → Render (se o rate limit passar)
+### Backend → Render (legacy / fallback)
 
-`render.yaml` pronto. **Render free tier** hiberna após 15 min — primeira
-request demora ~30 s. **Recomendado**: pelo menos **Starter $7/mês**.
+`render.yaml` is a Render Blueprint that ties the web service to the database. Free tier hibernates after 15 minutes; the first request after idle takes ~30 s. **Use at least the Starter plan for any non-toy usage.**
 
-> ⚠️ Render às limita criação de serviços por IP — se aparecer "Name in use"
-> ou rate-limit, espera 24 h ou usa Koyeb.
+> Render's free Postgres expires after 30 days. Migrate to Railway or a paid Render plan for anything serious.
 
 ---
 
-## 🔌 API (resumo)
+## 📡 API reference
 
-| Método | Endpoint | Auth | Descrição |
-|---|---|---|---|
-| GET | `/` | ❌ | Boas-vindas |
-| GET | `/healthz` | ❌ | Healthcheck |
-| POST | `/auth/register` | ❌ | `{ email, password }` |
-| POST | `/auth/login` | ❌ | OAuth2PasswordRequestForm → JWT |
-| POST | `/workouts` | ✅ | `{ workout_date, workout_type, exercicios_ginasio? \| series_natacao? }` |
-| GET | `/workouts` | ✅ | Histórico do user |
-| GET | `/analytics/weekly-summary` | ✅ | Totais + running-equivalent |
+All `/workouts/*` and `/analytics/*` endpoints require a `Bearer` token in the `Authorization` header.
 
-Documentação interactiva: **`/docs`** (Swagger UI) · **`/redoc`**
+| Method | Endpoint                          | Auth | Body                                                                                                          | Returns                              |
+| ------ | --------------------------------- | ---- | ------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| GET    | `/`                               | —    | —                                                                                                             | Welcome message                      |
+| GET    | `/healthz`                        | —    | —                                                                                                             | `{ "status": "ok" }`                 |
+| POST   | `/auth/register`                  | —    | `{ "email": string, "password": string }`                                                                     | `UserResponse`                       |
+| POST   | `/auth/login`                     | —    | `application/x-www-form-urlencoded` — `username` (email), `password`                                          | `{ "access_token", "token_type" }`   |
+| POST   | `/workouts`                       | ✅   | `{ workout_date, workout_type, exercicios_ginasio?[], series_natacao?[] }`                                    | `WorkoutResponse`                    |
+| GET    | `/workouts`                       | ✅   | —                                                                                                             | `WorkoutResponse[]`                  |
+| GET    | `/workouts/{id}`                  | ✅   | —                                                                                                             | `WorkoutResponse`                    |
+| PUT    | `/workouts/{id}`                  | ✅   | `{ workout_date, workout_type, exercicios_ginasio?[], series_natacao?[] }`                                    | `WorkoutResponse`                    |
+| DELETE | `/workouts/{id}`                  | ✅   | —                                                                                                             | `204 No Content`                     |
+| GET    | `/analytics/weekly-summary`       | ✅   | —                                                                                                             | Weekly summary payload               |
+
+### Payload shapes
+
+```jsonc
+// WorkoutCreate / WorkoutUpdate
+{
+  "workout_date": "2026-08-21",
+  "workout_type": "gym",          // "gym" | "swim"
+  "exercicios_ginasio": [
+    { "exercise_name": "Supino", "sets": 4, "reps": 10 }
+  ],
+  "series_natacao": []            // ignored when workout_type = "gym"
+}
+```
+
+```jsonc
+// Weekly summary
+{
+  "total_workouts": 4,
+  "total_gym_sets": 22,
+  "total_gym_reps": 180,
+  "total_swim_m": 3200,
+  "running_equivalent_km": 12.8   // swim_km × 4
+}
+```
+
+Interactive docs: `/docs` (Swagger UI) and `/redoc` (ReDoc) on the deployed backend.
 
 ---
 
-## 🧪 UX/HCI principles aplicados
+## 🧪 UX principles applied
 
-1. **Mobile-First** — layout responsivo, tab bar inferior
-2. **Lei de Fitts** — alvos ≥ 44×44 px
-3. **Prevenção de erros** — validação inline, submit desativado quando inválido
-4. **Lei de Hick** — toggle segmentado (gym vs swim) reduz decisão a 2 opções
-5. **Feedback contínuo** — `Toaster` em cada sucesso/erro
-6. **Carga cognitiva** — listas curtas, métricas em cards
-7. **Estados vazios** — mensagens amigáveis com CTA explícito
-8. **Acessibilidade** — `aria-label`, `aria-selected`, contraste WCAG AA
-
----
-
-## 📝 Notas de performance
-
-- `pwdlib` em vez de `passlib` — bcrypt direto, sem argon2 C lib no slim image
-- `/healthz` separado da lógica pesada → Render/Koyeb healthcheck não bloqueia
-- `create_all` movido para `lifespan` → app responde imediatamente
-- `--workers 2` por padrão
-- Requirements pinned → install reproduzível, sem resolve surpresa
+- **Mobile-first** — responsive layout with a bottom tab bar under the `sm` breakpoint.
+- **Fitts's Law** — every interactive target is at least 44×44 px.
+- **Error prevention** — submit button disabled until the form is valid; inline field errors.
+- **Hick's Law** — segmented toggle between *Ginásio* and *Natação* reduces the choice to two options.
+- **Continuous feedback** — `react-hot-toast` on every async action.
+- **Low cognitive load** — short lists, metrics in cards, no decorative noise.
+- **Empty states** — friendly copy with an explicit CTA.
+- **Accessibility** — `aria-label`, `aria-selected`, `role="dialog"`, ESC-to-close modals, WCAG AA contrast.
 
 ---
 
-## 📄 Licença
+## 🛠️ Development notes
 
-MIT — faz o que quiseres.
+- `pwdlib` with `BcryptHasher` is used instead of the older `passlib` — avoids the `argon2-cffi` native dependency that breaks the `python:slim` image.
+- `Base.metadata.create_all` runs inside the FastAPI `lifespan` context, not at import time, so the app responds immediately even if the database is briefly unavailable.
+- `--workers 2` is the default in the Render blueprint; tune for your instance size.
+- All backend dependencies are pinned in `requirements.txt` for reproducible builds.
+- The empty `package.json` at the repo root is intentional — it prevents Vercel from trying to build the Python project at the root when `rootDirectory` is being resolved.
+
+---
+
+## 📄 License
+
+[MIT](./LICENSE) — use it, fork it, build on it.

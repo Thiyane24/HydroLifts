@@ -7,7 +7,8 @@ from sqlalchemy.sql import func
 class Usuario(Base):
     __tablename__ = "usuarios"
 
-    user_id = Column(Integer, primary_key=True, index=True)
+    # Adicionado autoincrement=True explicitamente
+    user_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     email = Column(String, unique=True, index=True, nullable=False)
     password_hash = Column(String, nullable=False)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
@@ -18,7 +19,8 @@ class Usuario(Base):
 class Workout(Base):
     __tablename__ = "workouts"
 
-    workout_id = Column(Integer, primary_key=True, index=True)
+    # Adicionado autoincrement=True explicitamente
+    workout_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     user_id = Column(
         Integer, ForeignKey("usuarios.user_id", ondelete="CASCADE"), nullable=False
     )
@@ -37,7 +39,8 @@ class Workout(Base):
 class GymExercise(Base):
     __tablename__ = "gym_exercises"
 
-    exercise_id = Column(Integer, primary_key=True, index=True)
+    # Adicionado autoincrement=True explicitamente
+    exercise_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     workout_id = Column(
         Integer, ForeignKey("workouts.workout_id", ondelete="CASCADE"), nullable=False
     )
@@ -51,7 +54,8 @@ class GymExercise(Base):
 class SwimSet(Base):
     __tablename__ = "swim_sets"
 
-    swim_set_id = Column(Integer, primary_key=True, index=True)
+    # Adicionado autoincrement=True explicitamente
+    swim_set_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
     workout_id = Column(
         Integer, ForeignKey("workouts.workout_id", ondelete="CASCADE"), nullable=False
     )

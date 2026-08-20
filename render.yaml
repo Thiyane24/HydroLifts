@@ -26,6 +26,10 @@ services:
         value: /opt/render/project/src/app
       - key: ALLOWED_ORIGINS
         sync: false           # define manualmente para a URL do Vercel
+      - key: DATABASE_URL
+        fromDatabase:
+          name: hydrolifts-db
+          property: connectionString
 
 databases:
   - name: hydrolifts-db
