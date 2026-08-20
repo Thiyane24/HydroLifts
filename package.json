@@ -1,0 +1,10 @@
+{
+  "name": "hydrolifts-monorepo",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Monorepo marker — frontend lives in /frontend, backend in /app. This file exists to prevent Vercel from auto-detecting Python via requirements.txt.",
+  "scripts": {
+    "frontend:dev": "cd frontend && npm run dev",
+    "frontend:build": "cd frontend && npm run build"
+  }
+}
