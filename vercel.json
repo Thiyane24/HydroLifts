@@ -7,6 +7,6 @@
   "outputDirectory": "dist",
   "rootDirectory": "frontend",
   "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
+    { "source": "/((?!assets/|favicon\\.ico).*)", "destination": "/index.html" }
   ]
 }
