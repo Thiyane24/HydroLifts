@@ -6,7 +6,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 dotenv.load_dotenv()
 
 # 1. Obtém a URL da BD
-SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///./treinos.db")
+SQLALCHEMY_DATABASE_URL = os.getenv("DATABASE_URL")
 
 # 2. Corrige o prefixo exigido pelo SQLAlchemy para PostgreSQL
 if SQLALCHEMY_DATABASE_URL.startswith("postgres://"):
