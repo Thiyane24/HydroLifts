@@ -42,17 +42,17 @@ def resumo_semanal(
             "running_equivalent_km": 0.0,
         }
 
-    # 3. Agregar dados do Ginásio na BD (Soma de Sets e Reps)
+    # 3. Agregar dados do Ginásio na BD (Soma rigorosa apenas de Sets e Reps)
     gym_stats = (
         db.query(
             func.coalesce(func.sum(models.GymExercise.sets), 0).label("total_sets"),
-            func.coalesce(func.sum(models.GymExercise.reps + models.GymExercise.sets), 0).label("total_reps"),
+            func.coalesce(func.sum(models.GymExercise.reps), 0).label("total_reps"),
         )
         .filter(models.GymExercise.workout_id.in_(ids_treinos))
         .first()
     )
 
-    # 4. Agregar dados da Natação na BD (Soma de Distância * Repetições)
+    # 4. Agregar dados da Natação na BD (Soma de Distância * Repetições de cada série)
     swim_stats = (
         db.query(
             func.coalesce(func.sum(models.SwimSet.distance_m * models.SwimSet.reps), 0).label("total_m")
