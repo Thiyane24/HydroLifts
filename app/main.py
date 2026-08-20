@@ -1,3 +1,4 @@
+import logging
 from contextlib import asynccontextmanager
 import os
 
@@ -8,13 +9,12 @@ from database import engine
 from models import Base
 from routers import analytics, auth, workouts
 
+logger = logging.getLogger("uvicorn.error")
+
 ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv(
         "ALLOWED_ORIGINS",
-        # Defaults: dev (Vite) + a Vercel preview/production atual.
-        # Em produção real, defina ALLOWED_ORIGINS com os domínios finais
-        # (CSV) no painel do Render/Koyeb.
         "http://localhost:5173,https://hydrolifts.onrender.com,https://hydrolifts.vercel.app",
     ).split(",")
     if o.strip()
@@ -23,15 +23,11 @@ ALLOWED_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    # Cria as tabelas só depois do server subir — assim o /healthz responde
-    # imediatamente e o Render não marca o deploy como falhado enquanto o
-    # Postgres conecta.
     try:
         Base.metadata.create_all(bind=engine)
-    except Exception:
-        # Não bloquear o startup: a app continua disponível e as rotas
-        # vão falhar com 503 até a BD responder.
-        pass
+        logger.info("Tabelas sincronizadas com sucesso no PostgreSQL!")
+    except Exception as exc:
+        logger.error("ERRO NA CRIAÇÃO DE TABELAS: %s", exc)
     yield
 
 
@@ -61,7 +57,4 @@ def root():
 
 @app.get("/healthz")
 def healthz():
-    """Liveness probe — Render/Koyeb healthcheck."""
     return {"status": "ok"}
-
-
