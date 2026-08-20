@@ -15,7 +15,7 @@ ALLOWED_ORIGINS = [
         # Defaults: dev (Vite) + a Vercel preview/production atual.
         # Em produção real, defina ALLOWED_ORIGINS com os domínios finais
         # (CSV) no painel do Render/Koyeb.
-        "http://localhost:5173,http://127.0.0.1:5173,https://hydrolifts-b3lyfn7my-websimples-projects.vercel.app",
+        "http://localhost:5173,https://hydrolifts.onrender.com,https://hydrolifts.vercel.app",
     ).split(",")
     if o.strip()
 ]

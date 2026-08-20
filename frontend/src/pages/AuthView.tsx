@@ -176,9 +176,7 @@ export function AuthView() {
           </p>
         </div>
 
-        <p className="text-center text-xs text-navy-700/40 mt-6">
-          Feito com 💧 para a tua melhor versão.
-        </p>
+    
       </div>
 
       {/* hidden link fallback */}
