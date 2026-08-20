@@ -46,7 +46,7 @@ def resumo_semanal(
     gym_stats = (
         db.query(
             func.coalesce(func.sum(models.GymExercise.sets), 0).label("total_sets"),
-            func.coalesce(func.sum(models.GymExercise.reps * models.GymExercise.sets), 0).label("total_reps"),
+            func.coalesce(func.sum(models.GymExercise.reps + models.GymExercise.sets), 0).label("total_reps"),
         )
         .filter(models.GymExercise.workout_id.in_(ids_treinos))
         .first()
