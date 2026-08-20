@@ -124,6 +124,12 @@ export const workoutsApi = {
   list() {
     return api.get('/workouts')
   },
+  update(workoutId: number, payload: WorkoutPayload) {
+    return api.put(`/workouts/${workoutId}`, payload)
+  },
+  delete(workoutId: number) {
+    return api.delete(`/workouts/${workoutId}`)
+  },
 }
 
 export const analyticsApi = {

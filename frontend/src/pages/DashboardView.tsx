@@ -1,15 +1,21 @@
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity,
   Dumbbell,
   Footprints,
+  Pencil,
   PlusCircle,
   Repeat,
+  Trash2,
   TrendingUp,
   Waves,
 } from 'lucide-react'
+import toast from 'react-hot-toast'
 import { analyticsApi, WeeklySummary, workoutsApi } from '../lib/api'
+import { ConfirmDialog } from '../components/ConfirmDialog'
+import { EditWorkoutModal } from '../components/EditWorkoutModal'
+import { WorkoutSeed } from '../components/WorkoutForm'
 
 interface MetricCardProps {
   icon: React.ReactNode
@@ -125,29 +131,34 @@ function ProgressRing({
   )
 }
 
-interface RecentWorkout {
-  workout_id: number
-  workout_date: string
-  workout_type: string
-  exercicios_ginasio: unknown[]
-  series_natacao: unknown[]
-}
-
 export function DashboardView() {
   const [summary, setSummary] = useState<WeeklySummary | null>(null)
-  const [recent, setRecent] = useState<RecentWorkout[]>([])
+  const [workouts, setWorkouts] = useState<WorkoutSeed[]>([])
   const [loading, setLoading] = useState(true)
+  const [editing, setEditing] = useState<WorkoutSeed | null>(null)
+  const [deleting, setDeleting] = useState<WorkoutSeed | null>(null)
+  const [deletingLoading, setDeletingLoading] = useState(false)
   const WEEKLY_GOAL_KM = 20
+
+  const refreshWeeklySummary = useCallback(async () => {
+    try {
+      const { data } = await analyticsApi.weeklySummary()
+      setSummary(data)
+    } catch {
+      // O interceptor já trata; mantemos o último resumo conhecido.
+    }
+  }, [])
 
   useEffect(() => {
     let alive = true
+    setLoading(true)
     Promise.allSettled([analyticsApi.weeklySummary(), workoutsApi.list()])
       .then(([s, w]) => {
         if (!alive) return
         if (s.status === 'fulfilled') setSummary(s.value.data)
         if (w.status === 'fulfilled') {
-          const list = (w.value.data as RecentWorkout[]) ?? []
-          setRecent(list.slice(-3).reverse())
+          const list = (w.value.data as WorkoutSeed[]) ?? []
+          setWorkouts([...list].reverse())
         }
       })
       .finally(() => alive && setLoading(false))
@@ -155,6 +166,32 @@ export function DashboardView() {
       alive = false
     }
   }, [])
+
+  const handleDelete = async () => {
+    if (!deleting) return
+    setDeletingLoading(true)
+    try {
+      await workoutsApi.delete(deleting.workout_id)
+      // Remove imediatamente do estado local (sem reload)
+      setWorkouts((prev) => prev.filter((w) => w.workout_id !== deleting.workout_id))
+      toast.success('Treino removido com sucesso!')
+      setDeleting(null)
+      // Atualiza o resumo semanal em background
+      void refreshWeeklySummary()
+    } catch {
+      // interceptor já mostra o erro
+    } finally {
+      setDeletingLoading(false)
+    }
+  }
+
+  const handleSavedEdit = (updated: WorkoutSeed) => {
+    setWorkouts((prev) =>
+      prev.map((w) => (w.workout_id === updated.workout_id ? { ...w, ...updated } : w)),
+    )
+    setEditing(null)
+    void refreshWeeklySummary()
+  }
 
   const swimmingKm = summary ? summary.total_swim_m / 1000 : 0
   const runningEq = summary?.running_equivalent_km ?? 0
@@ -234,11 +271,16 @@ export function DashboardView() {
       <section className="card p-6">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-bold text-navy-900">Últimos treinos</h3>
+          <span className="text-xs text-navy-700/60">
+            {workouts.length === 0
+              ? 'Sem treinos'
+              : `${workouts.length} no histórico`}
+          </span>
         </div>
 
         {loading ? (
           <p className="text-sm text-navy-700/50">A carregar…</p>
-        ) : recent.length === 0 ? (
+        ) : workouts.length === 0 ? (
           <div className="flex flex-col items-center text-center py-8">
             <div className="w-14 h-14 rounded-2xl bg-pool-50 text-pool-700 grid place-items-center mb-3">
               <Waves className="w-7 h-7" />
@@ -254,14 +296,14 @@ export function DashboardView() {
           </div>
         ) : (
           <ul className="divide-y divide-navy-100">
-            {recent.map((w) => (
+            {workouts.map((w) => (
               <li
                 key={w.workout_id}
-                className="flex items-center justify-between py-3 first:pt-0 last:pb-0"
+                className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
               >
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 min-w-0">
                   <div
-                    className={`w-9 h-9 rounded-xl grid place-items-center ${
+                    className={`w-9 h-9 rounded-xl grid place-items-center shrink-0 ${
                       w.workout_type === 'gym'
                         ? 'bg-pool-50 text-pool-700'
                         : 'bg-mint-500/10 text-mint-600'
@@ -273,8 +315,8 @@ export function DashboardView() {
                       <Waves className="w-4 h-4" />
                     )}
                   </div>
-                  <div>
-                    <p className="font-semibold text-navy-900 capitalize">
+                  <div className="min-w-0">
+                    <p className="font-semibold text-navy-900 capitalize truncate">
                       {w.workout_type === 'gym' ? 'Ginásio' : 'Natação'}
                     </p>
                     <p className="text-xs text-navy-700/60">
@@ -286,15 +328,72 @@ export function DashboardView() {
                     </p>
                   </div>
                 </div>
-                <span className="text-xs text-navy-700/70">
-                  {(w.exercicios_ginasio?.length ?? 0) + (w.series_natacao?.length ?? 0)}{' '}
-                  {w.workout_type === 'gym' ? 'exercícios' : 'séries'}
-                </span>
+
+                <div className="flex items-center gap-2">
+                  <span className="hidden sm:inline text-xs text-navy-700/70 mr-1">
+                    {(w.exercicios_ginasio?.length ?? 0) +
+                      (w.series_natacao?.length ?? 0)}{' '}
+                    {w.workout_type === 'gym' ? 'exercícios' : 'séries'}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setEditing(w)}
+                    aria-label={`Editar treino de ${w.workout_type === 'gym' ? 'ginásio' : 'natação'} de ${new Date(w.workout_date).toLocaleDateString('pt-PT')}`}
+                    className="p-2 rounded-lg text-navy-700/50 hover:text-pool-700 hover:bg-pool-50 transition"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setDeleting(w)}
+                    aria-label={`Apagar treino de ${w.workout_type === 'gym' ? 'ginásio' : 'natação'} de ${new Date(w.workout_date).toLocaleDateString('pt-PT')}`}
+                    className="p-2 rounded-lg text-navy-700/50 hover:text-rose-500 hover:bg-rose-50 transition"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </li>
             ))}
           </ul>
         )}
       </section>
+
+      {/* MODAL — Editar */}
+      <EditWorkoutModal
+        workout={editing}
+        onCancel={() => setEditing(null)}
+        onSaved={handleSavedEdit}
+      />
+
+      {/* MODAL — Confirmar apagar */}
+      <ConfirmDialog
+        open={Boolean(deleting)}
+        title="Apagar este treino?"
+        description={
+          deleting ? (
+            <span>
+              Tens a certeza que queres apagar o treino de{' '}
+              <strong className="text-navy-900">
+                {deleting.workout_type === 'gym' ? 'ginásio' : 'natação'}
+              </strong>{' '}
+              de{' '}
+              <strong className="text-navy-900">
+                {new Date(deleting.workout_date).toLocaleDateString('pt-PT', {
+                  day: '2-digit',
+                  month: 'long',
+                  year: 'numeric',
+                })}
+              </strong>
+              ? Esta ação não pode ser revertida.
+            </span>
+          ) : null
+        }
+        confirmLabel="Apagar treino"
+        tone="danger"
+        loading={deletingLoading}
+        onConfirm={handleDelete}
+        onCancel={() => (deletingLoading ? undefined : setDeleting(null))}
+      />
     </div>
   )
 }
