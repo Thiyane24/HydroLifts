@@ -10,7 +10,7 @@ import {
   Waves,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
-import { GymExercisePayload, SwimSetPayload, workoutsApi } from '../lib/api'
+import { GymExercisePayload, SwimSetPayload, WorkoutPayload, workoutsApi } from '../lib/api'
 
 type WorkoutKind = 'gym' | 'swim'
 
@@ -62,7 +62,7 @@ export function LogWorkoutView() {
     if (!isValid) return
     setSubmitting(true)
     try {
-      const payload =
+      const payload: WorkoutPayload =
         kind === 'gym'
           ? {
               workout_date: date,

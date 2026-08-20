@@ -34,7 +34,12 @@ api.interceptors.response.use(
       typeof detail === 'string'
         ? detail
         : Array.isArray(detail)
-          ? detail.map((d: { msg?: string }) => d.msg).filter(Boolean).join(', ')
+          ? detail
+              .map((d) => (typeof d === 'object' && d !== null && 'msg' in d
+                ? String((d as { msg?: unknown }).msg ?? '')
+                : ''))
+              .filter(Boolean)
+              .join(', ')
           : error.message
 
     if (status === 401) {
