@@ -4,9 +4,16 @@ import toast from 'react-hot-toast'
 /**
  * Pool Palette base URL
  * - Em dev, o Vite faz proxy de /api -> http://localhost:8000 (sem CORS)
- * - Em prod, defina VITE_API_URL no .env (ex.: https://api.hydrolifts.app)
+ * - Em prod, defina VITE_API_URL no painel da Vercel (ex.: https://api.hydrolifts.app)
+ *
+ * ATENÇÃO (hack temporário): enquanto o projeto não tiver VITE_API_URL
+ * configurado na Vercel, usamos o backend Render como fallback hardcoded
+ * para destravar o login. Substituir por import.meta.env.VITE_API_URL
+ * assim que a env var estiver configurada na Vercel.
  */
-const baseURL = (import.meta.env.VITE_API_URL as string | undefined) ?? '/api'
+const FALLBACK_API_URL = 'https://hydrolifts.onrender.com'
+const baseURL =
+  (import.meta.env.VITE_API_URL as string | undefined) || FALLBACK_API_URL
 
 export const api = axios.create({
   baseURL,
