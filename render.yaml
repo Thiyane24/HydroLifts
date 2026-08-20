@@ -12,8 +12,8 @@ services:
     region: oregon
     rootDir: .
     buildCommand: "pip install --upgrade pip && pip install -r requirements.txt"
-    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir app"
-    healthCheckPath: /
+    startCommand: "uvicorn app.main:app --host 0.0.0.0 --port $PORT --app-dir app --workers 2"
+    healthCheckPath: /healthz
     autoDeploy: true
     envVars:
       - key: Secret_Key

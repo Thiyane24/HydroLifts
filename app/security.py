@@ -2,7 +2,7 @@ from datetime import datetime, timedelta, timezone
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
-from passlib.context import CryptContext
+from pwdlib import PasswordHash
 import jwt
 import os
 import dotenv
@@ -17,18 +17,18 @@ CHAVE_SECRETA = os.getenv("Secret_Key")  # F
 ALGORITMO = os.getenv("Hashing_Algorithm")  # F
 TEMPO_EXPIRACAO_MINUTOS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))  # F
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+pwd_hash = PasswordHash.recommended()
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
 # --- 1. HASHING DE PALAVRA-PASSE ---
 
 def gerar_hash_senha(senha_em_texto_puro: str) -> str:
-    return pwd_context.hash(senha_em_texto_puro)
+    return pwd_hash.hash(senha_em_texto_puro)
 
 
 def verificar_senha(senha_em_texto_puro: str, senha_hash_do_banco: str) -> bool:
-    return pwd_context.verify(senha_em_texto_puro, senha_hash_do_banco)
+    return pwd_hash.verify(senha_em_texto_puro, senha_hash_do_banco)
 
 
 # --- 2. GERAÇÃO DE TOKEN JWT ---
