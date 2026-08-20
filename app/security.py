@@ -3,6 +3,7 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from pwdlib import PasswordHash
+from pwdlib.hashers.bcrypt import BcryptHasher
 import jwt
 import os
 import dotenv
@@ -17,7 +18,8 @@ CHAVE_SECRETA = os.getenv("Secret_Key")  # F
 ALGORITMO = os.getenv("Hashing_Algorithm")  # F
 TEMPO_EXPIRACAO_MINUTOS = int(os.getenv("ACCESS_TOKEN_EXPIRE_MINUTES"))  # F
 
-pwd_hash = PasswordHash.recommended()
+# bcrypt direto — sem dep extra de argon2 (argon2 não está no python:slim)
+pwd_hash = PasswordHash((BcryptHasher(),))
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="auth/login")
 
 
