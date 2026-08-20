@@ -12,7 +12,10 @@ ALLOWED_ORIGINS = [
     o.strip()
     for o in os.getenv(
         "ALLOWED_ORIGINS",
-        "http://localhost:5173,http://127.0.0.1:5173",
+        # Defaults: dev (Vite) + a Vercel preview/production atual.
+        # Em produção real, defina ALLOWED_ORIGINS com os domínios finais
+        # (CSV) no painel do Render/Koyeb.
+        "http://localhost:5173,http://127.0.0.1:5173,https://hydrolifts-b3lyfn7my-websimples-projects.vercel.app",
     ).split(",")
     if o.strip()
 ]
@@ -49,11 +52,6 @@ app.add_middleware(
 app.include_router(auth.router, tags=["Autenticação"])
 app.include_router(workouts.router, tags=["Treinos"])
 app.include_router(analytics.router, tags=["Analytics"])
-
-
-@app.get("/")
-def health_check():
-    return {"status": "ok", "message": "HydroLifts API is running!"}
 
 
 @app.get("/")
