@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr, Field, ConfigDict
 from datetime import date, datetime
 from typing import List, Optional
+from pydantic import BaseModel, ConfigDict, EmailStr, Field
 
 
 # --- SCHEMAS DE GINÁSIO ---
@@ -48,6 +48,13 @@ class WorkoutBase(BaseModel):
 
 
 class WorkoutCreate(WorkoutBase):
+    exercicios_ginasio: Optional[List[GymExerciseCreate]] = []
+    series_natacao: Optional[List[SwimSetCreate]] = []
+
+
+class WorkoutUpdate(BaseModel):
+    workout_date: Optional[date] = None
+    workout_type: Optional[str] = None
     exercicios_ginasio: Optional[List[GymExerciseCreate]] = None
     series_natacao: Optional[List[SwimSetCreate]] = None
 

@@ -1,4 +1,6 @@
+from datetime import datetime, timedelta, timezone
 from fastapi import APIRouter, Depends
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 import models
@@ -14,27 +16,59 @@ def resumo_semanal(
     db: Session = Depends(get_db),
     utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
 ):
-    treinos = db.query(models.Workout).filter(models.Workout.user_id == utilizador_atual.user_id).all()
+    # 1. Definir o intervalo de tempo (últimos 7 dias)
+    hoje = datetime.now(timezone.utc).date()
+    inicio_semana = hoje - timedelta(days=7)
 
-    total_gym_sets = 0
-    total_gym_reps = 0
-    total_swim_distance_m = 0
+    # 2. Filtrar treinos apenas da última semana
+    treinos_semana = (
+        db.query(models.Workout)
+        .filter(
+            models.Workout.user_id == utilizador_atual.user_id,
+            models.Workout.workout_date >= inicio_semana,
+        )
+        .all()
+    )
 
-    for treino in treinos:
-        for exercicio in treino.exercicios_ginasio:
-            total_gym_sets += exercicio.sets
-            total_gym_reps += exercicio.reps
+    ids_treinos = [t.workout_id for t in treinos_semana]
 
-        for serie in treino.series_natacao:
-            total_swim_distance_m += serie.distance_m * serie.reps
+    # Se não houver treinos esta semana, retorna zerado de imediato
+    if not ids_treinos:
+        return {
+            "total_workouts": 0,
+            "total_gym_sets": 0,
+            "total_gym_reps": 0,
+            "total_swim_m": 0,
+            "running_equivalent_km": 0.0,
+        }
 
-    swim_km = total_swim_distance_m / 1000
-    running_equivalent_km = swim_km * 4
+    # 3. Agregar dados do Ginásio na BD (Soma de Sets e Reps)
+    gym_stats = (
+        db.query(
+            func.coalesce(func.sum(models.GymExercise.sets), 0).label("total_sets"),
+            func.coalesce(func.sum(models.GymExercise.reps * models.GymExercise.sets), 0).label("total_reps"),
+        )
+        .filter(models.GymExercise.workout_id.in_(ids_treinos))
+        .first()
+    )
+
+    # 4. Agregar dados da Natação na BD (Soma de Distância * Repetições)
+    swim_stats = (
+        db.query(
+            func.coalesce(func.sum(models.SwimSet.distance_m * models.SwimSet.reps), 0).label("total_m")
+        )
+        .filter(models.SwimSet.workout_id.in_(ids_treinos))
+        .first()
+    )
+
+    total_swim_m = float(swim_stats.total_m)
+    swim_km = total_swim_m / 1000.0
+    running_equivalent_km = round(swim_km * 4, 2)
 
     return {
-        "total_workouts": len(treinos),
-        "total_gym_sets": total_gym_sets,
-        "total_gym_reps": total_gym_reps,
-        "total_swim_m": total_swim_distance_m,
+        "total_workouts": len(treinos_semana),
+        "total_gym_sets": int(gym_stats.total_sets),
+        "total_gym_reps": int(gym_stats.total_reps),
+        "total_swim_m": int(total_swim_m),
         "running_equivalent_km": running_equivalent_km,
     }
