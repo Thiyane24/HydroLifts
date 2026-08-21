@@ -1,11 +1,13 @@
 import logging
+import traceback
 from contextlib import asynccontextmanager
 import os
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from sqlalchemy import text
 
-from database import engine
+from database import SessionLocal, engine
 from models import Base
 from routers import analytics, auth, workouts
 
@@ -27,7 +29,7 @@ async def lifespan(app: FastAPI):
         Base.metadata.create_all(bind=engine)
         logger.info("Tabelas sincronizadas com sucesso no PostgreSQL!")
     except Exception as exc:
-        logger.error("ERRO NA CRIAÇÃO DE TABELAS: %s", exc)
+        logger.error("ERRO NA CRIAÇÃO DE TABELAS: %s\n%s", exc, traceback.format_exc())
     yield
 
 
@@ -58,3 +60,14 @@ def root():
 @app.get("/healthz")
 def healthz():
     return {"status": "ok"}
+
+
+@app.get("/diag/db")
+def diag_db():
+    """Diagnóstico temporário: devolve o erro real do DB em vez de 500."""
+    try:
+        with SessionLocal() as db:
+            db.execute(text("SELECT 1"))
+        return {"db": "ok"}
+    except Exception as exc:
+        return {"db": "error", "type": type(exc).__name__, "detail": str(exc)}
