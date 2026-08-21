@@ -43,6 +43,15 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
 else:
+    # Quando o URL aponta para o Supavisor (transaction pooler, porta 6543),
+    # temos de marcar a ligação como compatível com PgBouncer: desactiva
+    # prepared statements e impõe transacções curtas. Sem isto, o pooler
+    # descarta comandos silenciosamente — INSERTs parecem funcionar mas
+    # nunca persistem.
+    if ":6543" in SQLALCHEMY_DATABASE_URL and "pgbouncer=true" not in SQLALCHEMY_DATABASE_URL:
+        separator = "&" if "?" in SQLALCHEMY_DATABASE_URL else "?"
+        SQLALCHEMY_DATABASE_URL = f"{SQLALCHEMY_DATABASE_URL}{separator}pgbouncer=true"
+
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         pool_pre_ping=True,
