@@ -15,35 +15,39 @@ def criar_treino(
     db: Session = Depends(get_db),
     utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
 ):
-    novo_treino = models.Workout(
-        workout_date=treino.workout_date,
-        workout_type=treino.workout_type,
-        user_id=utilizador_atual.user_id,
-    )
-    db.add(novo_treino)
-    db.commit()
-    db.refresh(novo_treino)
+    try:
+        novo_treino = models.Workout(
+            workout_date=treino.workout_date,
+            workout_type=treino.workout_type,
+            user_id=utilizador_atual.user_id,
+        )
+        db.add(novo_treino)
+        db.commit()
+        db.refresh(novo_treino)
 
-    if treino.exercicios_ginasio:
-        for exercicio in treino.exercicios_ginasio:
-            novo_exercicio = models.GymExercise(
-                **exercicio.model_dump(),
-                workout_id=novo_treino.workout_id,
-            )
-            db.add(novo_exercicio)
+        if treino.exercicios_ginasio:
+            for exercicio in treino.exercicios_ginasio:
+                novo_exercicio = models.GymExercise(
+                    **exercicio.model_dump(),
+                    workout_id=novo_treino.workout_id,
+                )
+                db.add(novo_exercicio)
 
-    if treino.series_natacao:
-        for serie in treino.series_natacao:
-            nova_serie = models.SwimSet(
-                **serie.model_dump(),
-                workout_id=novo_treino.workout_id,
-            )
-            db.add(nova_serie)
+        if treino.series_natacao:
+            for serie in treino.series_natacao:
+                nova_serie = models.SwimSet(
+                    **serie.model_dump(),
+                    workout_id=novo_treino.workout_id,
+                )
+                db.add(nova_serie)
 
-    db.commit()
-    db.refresh(novo_treino)
+        db.commit()
+        db.refresh(novo_treino)
 
-    return novo_treino
+        return novo_treino
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.get("/workouts", response_model=list[schemas.WorkoutResponse])
@@ -86,53 +90,44 @@ def atualizar_treino(
     db: Session = Depends(get_db),
     utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
 ):
-    # 1. Procurar o treino e validar permissão do utilizador
-    treino = (
-        db.query(models.Workout)
-        .filter(
-            models.Workout.workout_id == workout_id,
-            models.Workout.user_id == utilizador_atual.user_id,
+    try:
+        # 1. Procurar o treino e validar permissão do utilizador
+        treino = (
+            db.query(models.Workout)
+            .filter(
+                models.Workout.workout_id == workout_id,
+                models.Workout.user_id == utilizador_atual.user_id,
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not treino:
-        raise HTTPException(status_code=404, detail="Treino não encontrado")
+        if not treino:
+            raise HTTPException(status_code=404, detail="Treino não encontrado")
 
-    # 2. Atualizar dados principais do treino
-    treino.workout_date = treino_atualizado.workout_date
-    treino.workout_type = treino_atualizado.workout_type
+        # 2. Atualizar dados principais do treino
+        treino.workout_date = treino_atualizado.workout_date
+        treino.workout_type = treino_atualizado.workout_type
 
-    # 3. Remover exercícios/séries antigos para substituir pelos novos
-    db.query(models.GymExercise).filter(
-        models.GymExercise.workout_id == workout_id
-    ).delete()
-    db.query(models.SwimSet).filter(
-        models.SwimSet.workout_id == workout_id
-    ).delete()
+        # 3. Substituir coleções filhas — usar a cascade do ORM
+        #    (cascade="all, delete-orphan") para garantir limpeza correcta.
+        treino.exercicios_ginasio = [
+            models.GymExercise(**exercicio.model_dump())
+            for exercicio in (treino_atualizado.exercicios_ginasio or [])
+        ]
+        treino.series_natacao = [
+            models.SwimSet(**serie.model_dump())
+            for serie in (treino_atualizado.series_natacao or [])
+        ]
 
-    # 4. Inserir novos exercícios de ginásio (se existirem)
-    if treino_atualizado.exercicios_ginasio:
-        for exercicio in treino_atualizado.exercicios_ginasio:
-            novo_exercicio = models.GymExercise(
-                **exercicio.model_dump(),
-                workout_id=treino.workout_id,
-            )
-            db.add(novo_exercicio)
+        db.commit()
+        db.refresh(treino)
 
-    # 5. Inserir novas séries de natação (se existirem)
-    if treino_atualizado.series_natacao:
-        for serie in treino_atualizado.series_natacao:
-            nova_serie = models.SwimSet(
-                **serie.model_dump(),
-                workout_id=treino.workout_id,
-            )
-            db.add(nova_serie)
-
-    db.commit()
-    db.refresh(treino)
-
-    return treino
+        return treino
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.delete(
@@ -143,18 +138,24 @@ def apagar_treino(
     db: Session = Depends(get_db),
     utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
 ):
-    treino = (
-        db.query(models.Workout)
-        .filter(
-            models.Workout.workout_id == workout_id,
-            models.Workout.user_id == utilizador_atual.user_id,
+    try:
+        treino = (
+            db.query(models.Workout)
+            .filter(
+                models.Workout.workout_id == workout_id,
+                models.Workout.user_id == utilizador_atual.user_id,
+            )
+            .first()
         )
-        .first()
-    )
 
-    if not treino:
-        raise HTTPException(status_code=404, detail="Treino não encontrado")
+        if not treino:
+            raise HTTPException(status_code=404, detail="Treino não encontrado")
 
-    db.delete(treino)
-    db.commit()
+        db.delete(treino)
+        db.commit()
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
     return

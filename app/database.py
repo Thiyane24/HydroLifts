@@ -56,6 +56,7 @@ else:
         SQLALCHEMY_DATABASE_URL,
         pool_pre_ping=True,
         pool_recycle=300,
+        echo=False,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

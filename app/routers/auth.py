@@ -12,23 +12,29 @@ router = APIRouter()
 
 @router.post("/auth/register", response_model=schemas.UserResponse)
 def registar(user: schemas.UserCreate, db: Session = Depends(get_db)):
-    utilizador_existente = db.query(models.Usuario).filter(models.Usuario.email == user.email).first()
+    try:
+        utilizador_existente = db.query(models.Usuario).filter(models.Usuario.email == user.email).first()
 
-    if utilizador_existente:
-        raise HTTPException(status_code=400, detail="Email já registado")
+        if utilizador_existente:
+            raise HTTPException(status_code=400, detail="Email já registado")
 
-    hash_senha = security.gerar_hash_senha(user.password)
+        hash_senha = security.gerar_hash_senha(user.password)
 
-    novo_usuario = models.Usuario(
-        email=user.email,
-        password_hash=hash_senha,
-    )
+        novo_usuario = models.Usuario(
+            email=user.email,
+            password_hash=hash_senha,
+        )
 
-    db.add(novo_usuario)
-    db.commit()
-    db.refresh(novo_usuario)
+        db.add(novo_usuario)
+        db.commit()
+        db.refresh(novo_usuario)
 
-    return novo_usuario
+        return novo_usuario
+    except HTTPException:
+        raise
+    except Exception:
+        db.rollback()
+        raise
 
 
 @router.post("/auth/login")
