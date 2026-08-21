@@ -44,42 +44,36 @@ if SQLALCHEMY_DATABASE_URL.startswith("sqlite"):
         SQLALCHEMY_DATABASE_URL, connect_args={"check_same_thread": False}
     )
 else:
-    # Quando o URL aponta para o Supavisor (transaction pooler, porta 6543)
-    # temos de desactivar prepared statements e o statement cache do psycopg3,
-    # senão o pooler devolve erros. SQLAlchemy espera `pgbouncer` em
-    # connect_args, NÃO na query string do URL (libpq não reconhece a opção).
-    # Migramos qualquer `pgbouncer=true` colado no URL para connect_args.
+    # psycopg3 + Supavisor (transaction pooler porta 6543):
+    # O dialeto psycopg3 do SQLAlchemy NÃO suporta o kwarg `pgbouncer` — esse
+    # nome é específico de psycopg2/asyncpg. Quando o SQLAlchemy o recebe em
+    # connect_args, é passado a libpq e gera `invalid connection option
+    # "pgbouncer"`. O mesmo se aplica a `statement_cache_size` /
+    # `prepared_statement_cache_size` — também não existem em psycopg3.
+    #
+    # Para o Supavisor em transaction mode, basta usar a pooler URL correcta
+    # (postgres.<ref>:<pw>@...pooler.supabase.com:6543) e o psycopg3 lida
+    # com as transacções curtas sem settings extra.
+    #
+    # Por segurança, removemos `pgbouncer=true` da query string se alguém o
+    # tiver colado manualmente — não serve para nada e faria a ligação falhar.
     parsed = urlparse(SQLALCHEMY_DATABASE_URL)
     query_params = parse_qs(parsed.query)
-    connect_args = {}
-
-    if query_params.pop("pgbouncer", None):
-        connect_args["pgbouncer"] = True
-
-    using_pooler = (
-        ":6543" in SQLALCHEMY_DATABASE_URL
-        or "pooler.supabase.com" in SQLALCHEMY_DATABASE_URL
-        or connect_args.get("pgbouncer") is True
-    )
-    if using_pooler:
-        # psycopg3 cacheia prepared statements por defeito; Supavisor
-        # (transaction mode) não os suporta. statement_cache_size=0
-        # resolve "prepared statement does not exist" em reconnect.
-        connect_args.setdefault("statement_cache_size", 0)
-        connect_args.setdefault("prepared_statement_cache_size", 0)
-        connect_args.setdefault("pgbouncer", True)
+    query_params.pop("pgbouncer", None)
+    query_params.pop("statement_cache_size", None)
+    query_params.pop("prepared_statement_cache_size", None)
 
     if query_params:
-        # Reencoda a query string sem o(s) param(s) que migrámos.
         new_query = urlencode({k: v[0] for k, v in query_params.items()}, doseq=True)
         SQLALCHEMY_DATABASE_URL = urlunparse(parsed._replace(query=new_query))
+    else:
+        SQLALCHEMY_DATABASE_URL = urlunparse(parsed._replace(query=""))
 
     engine = create_engine(
         SQLALCHEMY_DATABASE_URL,
         pool_pre_ping=True,
         pool_recycle=300,
         echo=False,
-        connect_args=connect_args or None,
     )
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
