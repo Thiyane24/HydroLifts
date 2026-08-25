@@ -27,10 +27,16 @@ def criar_treino(
 
         if treino.exercicios_ginasio:
             for exercicio in treino.exercicios_ginasio:
+                detalhes = exercicio.series_detalhadas or []
+                payload = exercicio.model_dump(exclude={"series_detalhadas"})
                 novo_exercicio = models.GymExercise(
-                    **exercicio.model_dump(),
+                    **payload,
                     workout_id=novo_treino.workout_id,
                 )
+                for detalhe in detalhes:
+                    novo_exercicio.series_detalhadas.append(
+                        models.GymSetDetail(**detalhe.model_dump())
+                    )
                 db.add(novo_exercicio)
 
         if treino.series_natacao:
@@ -110,10 +116,17 @@ def atualizar_treino(
 
         # 3. Substituir coleções filhas — usar a cascade do ORM
         #    (cascade="all, delete-orphan") para garantir limpeza correcta.
-        treino.exercicios_ginasio = [
-            models.GymExercise(**exercicio.model_dump())
-            for exercicio in (treino_atualizado.exercicios_ginasio or [])
-        ]
+        novos_exercicios = []
+        for exercicio in (treino_atualizado.exercicios_ginasio or []):
+            payload = exercicio.model_dump(exclude={"series_detalhadas"})
+            novo = models.GymExercise(**payload)
+            for detalhe in (exercicio.series_detalhadas or []):
+                novo.series_detalhadas.append(
+                    models.GymSetDetail(**detalhe.model_dump())
+                )
+            novos_exercicios.append(novo)
+        treino.exercicios_ginasio = novos_exercicios
+
         treino.series_natacao = [
             models.SwimSet(**serie.model_dump())
             for serie in (treino_atualizado.series_natacao or [])

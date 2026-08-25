@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import {
   Activity,
+  BarChart3,
   Dumbbell,
   Footprints,
   Pencil,
@@ -196,6 +197,17 @@ export function DashboardView() {
   const swimmingKm = summary ? summary.total_swim_m / 1000 : 0
   const runningEq = summary?.running_equivalent_km ?? 0
 
+  // Formata o intervalo da semana ISO atual (ex.: "25 ago → 31 ago")
+  // para mostrar ao utilizador que o resumo é desta semana e que o
+  // reset acontece automaticamente à segunda-feira.
+  const formatRange = (start?: string, end?: string) => {
+    if (!start || !end) return null
+    const fmt = (iso: string) =>
+      new Date(iso).toLocaleDateString('pt-PT', { day: '2-digit', month: 'short' })
+    return `${fmt(start)} → ${fmt(end)}`
+  }
+  const weekRange = formatRange(summary?.week_start, summary?.week_end)
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
@@ -207,10 +219,26 @@ export function DashboardView() {
           <p className="text-sm text-navy-700/70 mt-1">
             A tua consistência em água e peso, lado a lado.
           </p>
+          {weekRange && (
+            <p className="text-xs text-navy-700/60 mt-1.5 inline-flex items-center gap-1.5">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-mint-500" />
+              Semana atual: <strong className="text-navy-700/80">{weekRange}</strong>
+              <span className="text-navy-700/40">·</span>
+              <span>reinicia à segunda-feira</span>
+            </p>
+          )}
         </div>
         <Link to="/log" className="btn-primary">
           <PlusCircle className="w-4 h-4" />
           Registar treino
+        </Link>
+        <Link
+          to="/monthly"
+          className="btn-ghost inline-flex items-center gap-2"
+          aria-label="Ver relatório mensal"
+        >
+          <BarChart3 className="w-4 h-4" />
+          Ver mês
         </Link>
       </header>
 
@@ -226,7 +254,7 @@ export function DashboardView() {
             max={WEEKLY_GOAL_KM}
             label={
               runningEq === 0
-                ? 'Ainda sem volume esta semana'
+                ? 'Ainda sem volume esta semana — o contador reinicia à segunda'
                 : runningEq >= WEEKLY_GOAL_KM
                   ? 'Meta semanal atingida! 🎉'
                   : 'Continua assim, estás a nadar bem!'
@@ -262,7 +290,7 @@ export function DashboardView() {
           icon={<Activity className="w-5 h-5" />}
           label="Treinos totais"
           value={summary?.total_workouts ?? 0}
-          hint="No histórico"
+          hint="Nesta semana"
           tone="navy"
         />
       </section>

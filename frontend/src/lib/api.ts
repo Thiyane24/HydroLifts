@@ -68,10 +68,24 @@ api.interceptors.response.use(
 
 // --- HELPERS de domínio (DRY + tipagem forte) ---
 
+export type WeightUnit = 'kg' | 'lb'
+
+export interface GymSetDetailPayload {
+  set_index: number
+  reps?: number
+  weight_value?: number
+  weight_unit?: WeightUnit
+}
+
 export interface GymExercisePayload {
   exercise_name: string
   sets: number
   reps: number
+  /** Carga default (opcional). Se houver séries detalhadas com peso, estas sobrescrevem. */
+  weight_value?: number
+  weight_unit?: WeightUnit
+  /** Séries individuais (opcional). Útil para drop-sets / pirâmide. */
+  series_detalhadas?: GymSetDetailPayload[]
 }
 
 export interface SwimSetPayload {
@@ -87,11 +101,27 @@ export interface WorkoutPayload {
 }
 
 export interface WeeklySummary {
+  /** Segunda-feira (YYYY-MM-DD) que define o início da semana ISO atual. */
+  week_start: string
+  /** Domingo (YYYY-MM-DD) que define o fim da semana ISO atual. */
+  week_end: string
   total_workouts: number
   total_gym_sets: number
   total_gym_reps: number
   total_swim_m: number
   running_equivalent_km: number
+  /** Peso máximo (kg) carregado no ginásio nesta semana. null se não houver. */
+  max_weight_kg: number | null
+}
+
+export interface WeeklyBreakdown extends WeeklySummary {
+  week_index: number
+}
+
+export interface MonthlySummary extends Omit<WeeklySummary, 'week_start' | 'week_end'> {
+  month_start: string
+  month_end: string
+  weeks: WeeklyBreakdown[]
 }
 
 export const authApi = {
@@ -135,5 +165,8 @@ export const workoutsApi = {
 export const analyticsApi = {
   weeklySummary() {
     return api.get<WeeklySummary>('/analytics/weekly-summary')
+  },
+  monthlySummary() {
+    return api.get<MonthlySummary>('/analytics/monthly-summary')
   },
 }

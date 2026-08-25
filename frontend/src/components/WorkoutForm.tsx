@@ -11,18 +11,31 @@ import {
 import toast from 'react-hot-toast'
 import {
   GymExercisePayload,
+  GymSetDetailPayload,
   SwimSetPayload,
+  WeightUnit,
   WorkoutPayload,
   workoutsApi,
 } from '../lib/api'
 
 export type WorkoutKind = 'gym' | 'swim'
 
+export interface GymSetRow {
+  id: string
+  set_index: number
+  reps: number | ''
+  weight_value: number | ''
+  weight_unit: WeightUnit
+}
+
 export interface GymRow {
   id: string
   exercise_name: string
   sets: number | ''
   reps: number | ''
+  weight_value: number | ''
+  weight_unit: WeightUnit
+  series_detalhadas: GymSetRow[]
 }
 export interface SwimRow {
   id: string
@@ -35,7 +48,19 @@ export interface WorkoutSeed {
   workout_id: number
   workout_date: string
   workout_type: string
-  exercicios_ginasio?: { exercise_name: string; sets: number; reps: number }[]
+  exercicios_ginasio?: {
+    exercise_name: string
+    sets: number
+    reps: number
+    weight_value?: number | null
+    weight_unit?: WeightUnit | null
+    series_detalhadas?: {
+      set_index: number
+      reps?: number | null
+      weight_value?: number | null
+      weight_unit?: WeightUnit | null
+    }[]
+  }[]
   series_natacao?: { distance_m: number; reps: number }[]
 }
 
@@ -55,6 +80,9 @@ const newGym = (): GymRow => ({
   exercise_name: '',
   sets: '',
   reps: '',
+  weight_value: '',
+  weight_unit: 'kg',
+  series_detalhadas: [],
 })
 const newSwim = (): SwimRow => ({
   id: crypto.randomUUID(),
@@ -62,12 +90,19 @@ const newSwim = (): SwimRow => ({
   reps: '',
 })
 
+/** Validação: peso e unidade têm de aparecer juntos (ou nenhum). */
+function isGymWeightConsistent(r: GymRow): boolean {
+  const hasValue = r.weight_value !== '' && Number(r.weight_value) > 0
+  return hasValue ? Boolean(r.weight_unit) : true
+}
+
 function isGymValid(rows: GymRow[]): boolean {
   return rows.every(
     (r) =>
       r.exercise_name.trim().length > 1 &&
       Number(r.sets) > 0 &&
-      Number(r.reps) > 0,
+      Number(r.reps) > 0 &&
+      isGymWeightConsistent(r),
   )
 }
 function isSwimValid(rows: SwimRow[]): boolean {
@@ -98,6 +133,15 @@ function seedFromInitial(initial: WorkoutSeed | undefined): {
           exercise_name: e.exercise_name,
           sets: e.sets,
           reps: e.reps,
+          weight_value: e.weight_value ?? '',
+          weight_unit: e.weight_unit ?? 'kg',
+          series_detalhadas: (e.series_detalhadas ?? []).map((s) => ({
+            id: crypto.randomUUID(),
+            set_index: s.set_index,
+            reps: s.reps ?? '',
+            weight_value: s.weight_value ?? '',
+            weight_unit: s.weight_unit ?? 'kg',
+          })),
         }))
       : [newGym()]
 
@@ -154,11 +198,33 @@ export function WorkoutForm({
           ? {
               workout_date: date,
               workout_type: 'gym',
-              exercicios_ginasio: gym.map<GymExercisePayload>((r) => ({
-                exercise_name: r.exercise_name.trim(),
-                sets: Number(r.sets),
-                reps: Number(r.reps),
-              })),
+              exercicios_ginasio: gym.map<GymExercisePayload>((r) => {
+                const base: GymExercisePayload = {
+                  exercise_name: r.exercise_name.trim(),
+                  sets: Number(r.sets),
+                  reps: Number(r.reps),
+                }
+                if (r.weight_value !== '' && Number(r.weight_value) > 0) {
+                  base.weight_value = Number(r.weight_value)
+                  base.weight_unit = r.weight_unit
+                }
+                if (r.series_detalhadas.length > 0) {
+                  base.series_detalhadas = r.series_detalhadas
+                    .filter((s) => s.reps !== '' || s.weight_value !== '')
+                    .map((s) => {
+                      const det: GymSetDetailPayload = {
+                        set_index: s.set_index,
+                      }
+                      if (s.reps !== '') det.reps = Number(s.reps)
+                      if (s.weight_value !== '' && Number(s.weight_value) > 0) {
+                        det.weight_value = Number(s.weight_value)
+                        det.weight_unit = s.weight_unit
+                      }
+                      return det
+                    })
+                }
+                return base
+              }),
             }
           : {
               workout_date: date,
@@ -290,11 +356,61 @@ function GymList({
     setRows((prev) => (prev.length > 1 ? prev.filter((r) => r.id !== id) : prev))
   const add = () => setRows((prev) => [...prev, newGym()])
 
+  const updateSet = (rowId: string, setId: string, patch: Partial<GymSetRow>) =>
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              series_detalhadas: r.series_detalhadas.map((s) =>
+                s.id === setId ? { ...s, ...patch } : s,
+              ),
+            }
+          : r,
+      ),
+    )
+  const addSet = (rowId: string) =>
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              series_detalhadas: [
+                ...r.series_detalhadas,
+                {
+                  id: crypto.randomUUID(),
+                  set_index: r.series_detalhadas.length + 1,
+                  reps: '',
+                  weight_value: '',
+                  weight_unit: r.weight_unit,
+                },
+              ],
+            }
+          : r,
+      ),
+    )
+  const removeSet = (rowId: string, setId: string) =>
+    setRows((prev) =>
+      prev.map((r) =>
+        r.id === rowId
+          ? {
+              ...r,
+              series_detalhadas: r.series_detalhadas
+                .filter((s) => s.id !== setId)
+                .map((s, i) => ({ ...s, set_index: i + 1 })),
+            }
+          : r,
+      ),
+    )
+
   return (
     <section className="space-y-3">
       {rows.map((r, idx) => {
         const rowValid =
-          r.exercise_name.trim().length > 1 && Number(r.sets) > 0 && Number(r.reps) > 0
+          r.exercise_name.trim().length > 1 &&
+          Number(r.sets) > 0 &&
+          Number(r.reps) > 0 &&
+          isGymWeightConsistent(r)
         return (
           <div
             key={r.id}
@@ -375,6 +491,128 @@ function GymList({
                 />
               </div>
             </div>
+
+            {/* PESO (OPCIONAL) */}
+            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+              <div>
+                <label className="text-xs font-medium text-navy-700/80 mb-1 block">
+                  Peso <span className="text-navy-700/40">(opcional)</span>
+                </label>
+                <input
+                  type="number"
+                  inputMode="decimal"
+                  step="0.5"
+                  min={0}
+                  placeholder="—"
+                  value={r.weight_value}
+                  onChange={(e) =>
+                    update(r.id, {
+                      weight_value: e.target.value === '' ? '' : Number(e.target.value),
+                    })
+                  }
+                  className="input-base"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-navy-700/80 mb-1 block">
+                  Unidade
+                </label>
+                <select
+                  value={r.weight_unit}
+                  onChange={(e) =>
+                    update(r.id, { weight_unit: e.target.value as WeightUnit })
+                  }
+                  className="input-base"
+                  aria-label="Unidade de peso"
+                >
+                  <option value="kg">kg</option>
+                  <option value="lb">lb</option>
+                </select>
+              </div>
+            </div>
+
+            {/* SÉRIES DETALHADAS (OPCIONAL) */}
+            {r.series_detalhadas.length > 0 && (
+              <div className="mt-2 space-y-2 pl-3 border-l-2 border-pool-200">
+                <p className="text-xs font-semibold text-navy-700/80">
+                  Séries individuais
+                </p>
+                {r.series_detalhadas.map((s) => (
+                  <div
+                    key={s.id}
+                    className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 items-center"
+                  >
+                    <span className="text-xs font-bold text-navy-700/60 w-5">
+                      #{s.set_index}
+                    </span>
+                    <input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      placeholder="reps"
+                      value={s.reps}
+                      onChange={(e) =>
+                        updateSet(r.id, s.id, {
+                          reps: e.target.value === '' ? '' : Number(e.target.value),
+                        })
+                      }
+                      className="input-base text-sm py-2"
+                      aria-label={`Reps da série ${s.set_index}`}
+                    />
+                    <div className="flex gap-1">
+                      <input
+                        type="number"
+                        inputMode="decimal"
+                        step="0.5"
+                        min={0}
+                        placeholder="peso"
+                        value={s.weight_value}
+                        onChange={(e) =>
+                          updateSet(r.id, s.id, {
+                            weight_value:
+                              e.target.value === '' ? '' : Number(e.target.value),
+                          })
+                        }
+                        className="input-base text-sm py-2 flex-1 min-w-0"
+                        aria-label={`Peso da série ${s.set_index}`}
+                      />
+                      <select
+                        value={s.weight_unit}
+                        onChange={(e) =>
+                          updateSet(r.id, s.id, {
+                            weight_unit: e.target.value as WeightUnit,
+                          })
+                        }
+                        className="input-base text-sm py-2 px-2"
+                        aria-label={`Unidade da série ${s.set_index}`}
+                      >
+                        <option value="kg">kg</option>
+                        <option value="lb">lb</option>
+                      </select>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => removeSet(r.id, s.id)}
+                      className="p-1.5 text-navy-700/40 hover:text-rose-500"
+                      aria-label={`Remover série ${s.set_index}`}
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => addSet(r.id)}
+              className="w-full text-xs py-2 rounded-xl border border-dashed border-navy-200 text-navy-700/60 hover:bg-navy-50 transition flex items-center justify-center gap-1.5"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              {r.series_detalhadas.length === 0
+                ? 'Adicionar séries detalhadas (peso por série)'
+                : 'Adicionar outra série'}
+            </button>
           </div>
         )
       })}

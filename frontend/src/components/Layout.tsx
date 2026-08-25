@@ -1,5 +1,5 @@
 import { Link, NavLink, Outlet, useNavigate } from 'react-router-dom'
-import { LogOut, Waves, Dumbbell, LayoutDashboard, PlusCircle } from 'lucide-react'
+import { LogOut, Waves, Dumbbell, LayoutDashboard, PlusCircle, BarChart3 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import { useAuth } from '../contexts/AuthContext'
 
@@ -14,6 +14,7 @@ export function Layout() {
 
   const navItems = [
     { to: '/dashboard', label: 'Resumo', icon: LayoutDashboard },
+    { to: '/monthly', label: 'Mês', icon: BarChart3 },
     { to: '/log', label: 'Registar', icon: PlusCircle },
   ]
 
