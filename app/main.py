@@ -5,8 +5,6 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from database import engine
-from models import Base
 from routers import analytics, auth, workouts
 
 logger = logging.getLogger("uvicorn.error")
@@ -23,11 +21,47 @@ ALLOWED_ORIGINS = [
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # O schema é gerido pelo Alembic (alembic/versions). Não criamos
+    # tabelas em runtime; em vez disso verificamos se a BD está em
+    # sincronia com a head do repositório e avisamos se não estiver.
     try:
-        Base.metadata.create_all(bind=engine)
-        logger.info("Tabelas sincronizadas com sucesso no PostgreSQL!")
+        from pathlib import Path
+
+        from alembic.config import Config
+        from alembic.runtime import migration
+        from alembic.script import ScriptDirectory
+        from sqlalchemy import text
+
+        from database import engine as _engine
+
+        root = Path(__file__).resolve().parent.parent
+        cfg = Config(str(root / "alembic.ini"))
+        cfg.set_main_option(
+            "script_location", str(root / "alembic")
+        )
+        script_dir = ScriptDirectory.from_config(cfg)
+        head = script_dir.get_current_head()
+
+        with _engine.begin() as conn:
+            # Garante a tabela alembic_version (idempotente).
+            conn.execute(text(
+                "CREATE TABLE IF NOT EXISTS alembic_version "
+                "(version_num VARCHAR(32) NOT NULL PRIMARY KEY)"
+            ))
+            current = conn.execute(
+                text("SELECT version_num FROM alembic_version LIMIT 1")
+            ).scalar()
+
+        if current != head:
+            logger.warning(
+                "DB desactualizada: current=%s head=%s. "
+                "Corre 'alembic upgrade head'.",
+                current, head,
+            )
+        else:
+            logger.info("Schema Alembic sincronizado (rev=%s).", current)
     except Exception as exc:
-        logger.error("ERRO NA CRIAÇÃO DE TABELAS: %s", exc)
+        logger.warning("Não foi possível verificar schema Alembic: %s", exc)
     yield
 
 
