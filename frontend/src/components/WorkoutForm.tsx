@@ -457,7 +457,7 @@ function GymList({
               />
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-navy-700/80 mb-1 block">
                   Séries
@@ -493,7 +493,7 @@ function GymList({
             </div>
 
             {/* PESO (OPCIONAL) */}
-            <div className="grid grid-cols-[1fr_auto] gap-3 items-end">
+            <div className="grid grid-cols-1 xs:grid-cols-[1fr_auto] gap-3 items-end">
               <div>
                 <label className="text-xs font-medium text-navy-700/80 mb-1 block">
                   Peso <span className="text-navy-700/40">(opcional)</span>
@@ -522,7 +522,7 @@ function GymList({
                   onChange={(e) =>
                     update(r.id, { weight_unit: e.target.value as WeightUnit })
                   }
-                  className="input-base"
+                  className="input-base min-w-[80px]"
                   aria-label="Unidade de peso"
                 >
                   <option value="kg">kg</option>
@@ -533,18 +533,28 @@ function GymList({
 
             {/* SÉRIES DETALHADAS (OPCIONAL) */}
             {r.series_detalhadas.length > 0 && (
-              <div className="mt-2 space-y-2 pl-3 border-l-2 border-pool-200">
+              <div className="mt-2 space-y-2 pl-2 xs:pl-3 border-l-2 border-pool-200">
                 <p className="text-xs font-semibold text-navy-700/80">
                   Séries individuais
                 </p>
                 {r.series_detalhadas.map((s) => (
                   <div
                     key={s.id}
-                    className="grid grid-cols-[auto_1fr_1fr_auto] gap-2 items-center"
+                    className="flex flex-col gap-2 p-2 rounded-lg bg-navy-50/50 xs:grid xs:grid-cols-[auto_1fr_1fr_auto] xs:items-center xs:gap-2 xs:bg-transparent xs:p-0"
                   >
-                    <span className="text-xs font-bold text-navy-700/60 w-5">
-                      #{s.set_index}
-                    </span>
+                    <div className="flex items-center justify-between xs:justify-start">
+                      <span className="text-xs font-bold text-navy-700/60 w-8">
+                        #{s.set_index}
+                      </span>
+                      <button
+                        type="button"
+                        onClick={() => removeSet(r.id, s.id)}
+                        className="xs:hidden p-2 min-w-[36px] min-h-[36px] grid place-items-center text-navy-700/40 hover:text-rose-500"
+                        aria-label={`Remover série ${s.set_index}`}
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                     <input
                       type="number"
                       inputMode="numeric"
@@ -559,7 +569,7 @@ function GymList({
                       className="input-base text-sm py-2"
                       aria-label={`Reps da série ${s.set_index}`}
                     />
-                    <div className="flex gap-1">
+                    <div className="flex gap-1 min-w-0">
                       <input
                         type="number"
                         inputMode="decimal"
@@ -583,7 +593,7 @@ function GymList({
                             weight_unit: e.target.value as WeightUnit,
                           })
                         }
-                        className="input-base text-sm py-2 px-2"
+                        className="input-base text-sm py-2 px-2 shrink-0"
                         aria-label={`Unidade da série ${s.set_index}`}
                       >
                         <option value="kg">kg</option>
@@ -593,10 +603,10 @@ function GymList({
                     <button
                       type="button"
                       onClick={() => removeSet(r.id, s.id)}
-                      className="p-1.5 text-navy-700/40 hover:text-rose-500"
+                      className="hidden xs:grid xs:place-items-center p-2 min-w-[36px] min-h-[36px] text-navy-700/40 hover:text-rose-500"
                       aria-label={`Remover série ${s.set_index}`}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-4 h-4" />
                     </button>
                   </div>
                 ))}
@@ -673,7 +683,7 @@ function SwimList({
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
               <div>
                 <label className="text-xs font-medium text-navy-700/80 mb-1 block">
                   Distância (m)

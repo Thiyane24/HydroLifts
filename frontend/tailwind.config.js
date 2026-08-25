@@ -2,6 +2,16 @@
 export default {
   content: ['./index.html', './src/**/*.{ts,tsx}'],
   theme: {
+    screens: {
+      // Breakpoint extra-pequeno para telefones muito estreitos (~360px).
+      // Tailwind não traz por defeito; necessário para layouts 320-375.
+      xs: '380px',
+      sm: '640px',
+      md: '768px',
+      lg: '1024px',
+      xl: '1280px',
+      '2xl': '1536px',
+    },
     extend: {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

@@ -41,7 +41,7 @@ export function EditWorkoutModal({
       onClick={onCancel}
     >
       <div
-        className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-navy-100 max-h-[90vh] overflow-y-auto"
+        className="relative w-full max-w-2xl bg-white rounded-t-3xl sm:rounded-2xl shadow-xl border border-navy-100 max-h-[90vh] overflow-y-auto pb-modal-sheet"
         onClick={(e) => e.stopPropagation()}
       >
         <button

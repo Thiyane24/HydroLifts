@@ -211,8 +211,8 @@ export function DashboardView() {
   return (
     <div className="space-y-6">
       {/* HEADER */}
-      <header className="flex items-end justify-between gap-4 flex-wrap">
-        <div>
+      <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
           <h1 className="text-2xl sm:text-3xl font-extrabold text-navy-900 tracking-tight">
             Resumo Semanal
           </h1>
@@ -220,7 +220,7 @@ export function DashboardView() {
             A tua consistência em água e peso, lado a lado.
           </p>
           {weekRange && (
-            <p className="text-xs text-navy-700/60 mt-1.5 inline-flex items-center gap-1.5">
+            <p className="text-xs text-navy-700/60 mt-1.5 inline-flex items-center gap-1.5 flex-wrap">
               <span className="inline-block w-1.5 h-1.5 rounded-full bg-mint-500" />
               Semana atual: <strong className="text-navy-700/80">{weekRange}</strong>
               <span className="text-navy-700/40">·</span>
@@ -228,18 +228,22 @@ export function DashboardView() {
             </p>
           )}
         </div>
-        <Link to="/log" className="btn-primary">
-          <PlusCircle className="w-4 h-4" />
-          Registar treino
-        </Link>
-        <Link
-          to="/monthly"
-          className="btn-ghost inline-flex items-center gap-2"
-          aria-label="Ver relatório mensal"
-        >
-          <BarChart3 className="w-4 h-4" />
-          Ver mês
-        </Link>
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
+          <Link
+            to="/monthly"
+            className="btn-ghost"
+            aria-label="Ver relatório mensal"
+          >
+            <BarChart3 className="w-4 h-4" />
+            <span className="hidden xs:inline sm:inline">Ver mês</span>
+            <span className="sm:hidden">Mês</span>
+          </Link>
+          <Link to="/log" className="btn-primary">
+            <PlusCircle className="w-4 h-4" />
+            <span className="hidden xs:inline sm:inline">Registar treino</span>
+            <span className="sm:hidden">Registar</span>
+          </Link>
+        </div>
       </header>
 
       {/* HERO — Running Equivalent */}
@@ -327,7 +331,7 @@ export function DashboardView() {
             {workouts.map((w) => (
               <li
                 key={w.workout_id}
-                className="flex items-center justify-between gap-3 py-3 first:pt-0 last:pb-0"
+                className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3 py-3 first:pt-0 last:pb-0"
               >
                 <div className="flex items-center gap-3 min-w-0">
                   <div
@@ -343,7 +347,7 @@ export function DashboardView() {
                       <Waves className="w-4 h-4" />
                     )}
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="font-semibold text-navy-900 capitalize truncate">
                       {w.workout_type === 'gym' ? 'Ginásio' : 'Natação'}
                     </p>
@@ -353,11 +357,17 @@ export function DashboardView() {
                         month: 'short',
                         year: 'numeric',
                       })}
+                      <span className="sm:hidden">
+                        {' · '}
+                        {(w.exercicios_ginasio?.length ?? 0) +
+                          (w.series_natacao?.length ?? 0)}{' '}
+                        {w.workout_type === 'gym' ? 'ex.' : 'sér.'}
+                      </span>
                     </p>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2">
+                <div className="flex items-center justify-end gap-1 sm:gap-2">
                   <span className="hidden sm:inline text-xs text-navy-700/70 mr-1">
                     {(w.exercicios_ginasio?.length ?? 0) +
                       (w.series_natacao?.length ?? 0)}{' '}
@@ -367,7 +377,7 @@ export function DashboardView() {
                     type="button"
                     onClick={() => setEditing(w)}
                     aria-label={`Editar treino de ${w.workout_type === 'gym' ? 'ginásio' : 'natação'} de ${new Date(w.workout_date).toLocaleDateString('pt-PT')}`}
-                    className="p-2 rounded-lg text-navy-700/50 hover:text-pool-700 hover:bg-pool-50 transition"
+                    className="p-2 min-w-[40px] min-h-[40px] grid place-items-center rounded-lg text-navy-700/50 hover:text-pool-700 hover:bg-pool-50 transition"
                   >
                     <Pencil className="w-4 h-4" />
                   </button>
@@ -375,7 +385,7 @@ export function DashboardView() {
                     type="button"
                     onClick={() => setDeleting(w)}
                     aria-label={`Apagar treino de ${w.workout_type === 'gym' ? 'ginásio' : 'natação'} de ${new Date(w.workout_date).toLocaleDateString('pt-PT')}`}
-                    className="p-2 rounded-lg text-navy-700/50 hover:text-rose-500 hover:bg-rose-50 transition"
+                    className="p-2 min-w-[40px] min-h-[40px] grid place-items-center rounded-lg text-navy-700/50 hover:text-rose-500 hover:bg-rose-50 transition"
                   >
                     <Trash2 className="w-4 h-4" />
                   </button>

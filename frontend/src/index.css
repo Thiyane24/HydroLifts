@@ -5,10 +5,16 @@
 @layer base {
   html {
     -webkit-tap-highlight-color: transparent;
+    /* Garante que o viewport cobre sempre o ecrã, mesmo com barras
+       dinâmicas (URL bar a recolher, etc.) */
+    min-height: 100%;
   }
   body {
     @apply bg-navy-50 text-navy-800 font-sans antialiased;
     font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+    /* Garante overflow-x nunca — previne scroll horizontal em ecrãs
+       estreitos quando algo ultrapassa o viewport */
+    overflow-x: hidden;
   }
   /* Fitts's Law — alvos de toque generosos por padrão */
   button,
@@ -27,23 +33,37 @@
     @apply bg-white rounded-2xl shadow-sm border border-navy-100;
   }
   .input-base {
-    @apply w-full bg-white border border-navy-200 rounded-xl px-4 py-3 text-navy-800
+    @apply w-full min-w-0 bg-white border border-navy-200 rounded-xl px-4 py-3 text-navy-800
       placeholder:text-navy-200
       focus:outline-none focus:border-pool-500 focus:shadow-ring
       transition;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center gap-2 px-6 py-3.5 rounded-xl
-      bg-pool-500 text-white font-semibold shadow-pool
+    @apply inline-flex items-center justify-center gap-2 px-4 sm:px-6 py-3 sm:py-3.5 rounded-xl
+      bg-pool-500 text-white font-semibold shadow-pool whitespace-nowrap
       hover:bg-pool-600 active:scale-[0.98] transition
       disabled:bg-navy-200 disabled:shadow-none disabled:cursor-not-allowed disabled:active:scale-100;
   }
   .btn-ghost {
-    @apply inline-flex items-center justify-center gap-2 px-4 py-3 rounded-xl
-      text-navy-700 font-medium hover:bg-navy-100 transition;
+    @apply inline-flex items-center justify-center gap-2 px-3 sm:px-4 py-3 rounded-xl
+      text-navy-700 font-medium hover:bg-navy-100 transition whitespace-nowrap;
   }
   .tab-pill {
-    @apply px-4 py-2 rounded-full text-sm font-medium transition;
+    @apply px-3 sm:px-4 py-2 rounded-full text-sm font-medium transition;
+  }
+  /* Padding inferior extra para conteúdo que precisa de respirar acima
+     da tab bar mobile fixa (iOS safe-area também). */
+  .pb-tabbar {
+    padding-bottom: max(7rem, calc(env(safe-area-inset-bottom) + 6rem));
+  }
+  @media (min-width: 640px) {
+    .pb-tabbar {
+      padding-bottom: 2.5rem;
+    }
+  }
+  /* Para o bottom-sheet de modais. */
+  .pb-modal-sheet {
+    padding-bottom: env(safe-area-inset-bottom);
   }
 }
 

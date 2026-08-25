@@ -190,7 +190,7 @@ export function MonthlyReportView() {
                 {data.weeks.map((w) => (
                   <li
                     key={`${w.week_start}-${w.week_index}`}
-                    className="py-3 first:pt-0 last:pb-0 flex items-center justify-between gap-3 flex-wrap"
+                    className="py-3 first:pt-0 last:pb-0 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3"
                   >
                     <div className="flex items-center gap-3 min-w-0">
                       <div className="w-9 h-9 rounded-xl grid place-items-center bg-pool-50 text-pool-700 shrink-0">
@@ -206,34 +206,34 @@ export function MonthlyReportView() {
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-sm">
-                      <div className="flex items-center gap-1.5 text-navy-700/80">
-                        <Activity className="w-3.5 h-3.5 text-pool-600" />
+                    <div className="grid grid-cols-2 xs:grid-cols-3 sm:flex sm:items-center gap-x-4 gap-y-2 text-sm sm:gap-4">
+                      <div className="flex items-center gap-1.5 text-navy-700/80 min-w-0">
+                        <Activity className="w-3.5 h-3.5 text-pool-600 shrink-0" />
                         <span className="font-semibold">{w.total_workouts}</span>
                         <span className="text-navy-700/50 text-xs">treinos</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-navy-700/80">
-                        <Dumbbell className="w-3.5 h-3.5 text-pool-600" />
+                      <div className="flex items-center gap-1.5 text-navy-700/80 min-w-0">
+                        <Dumbbell className="w-3.5 h-3.5 text-pool-600 shrink-0" />
                         <span className="font-semibold">{w.total_gym_sets}</span>
                         <span className="text-navy-700/50 text-xs">séries</span>
                       </div>
-                      <div className="flex items-center gap-1.5 text-navy-700/80">
-                        <Waves className="w-3.5 h-3.5 text-mint-600" />
+                      <div className="flex items-center gap-1.5 text-navy-700/80 min-w-0">
+                        <Waves className="w-3.5 h-3.5 text-mint-600 shrink-0" />
                         <span className="font-semibold">
                           {w.total_swim_m.toLocaleString('pt-PT')}
                         </span>
                         <span className="text-navy-700/50 text-xs">m</span>
                       </div>
                       {w.max_weight_kg !== null && (
-                        <div className="flex items-center gap-1.5 text-amber-700">
-                          <Weight className="w-3.5 h-3.5" />
+                        <div className="flex items-center gap-1.5 text-amber-700 min-w-0">
+                          <Weight className="w-3.5 h-3.5 shrink-0" />
                           <span className="font-semibold">
                             {w.max_weight_kg.toFixed(1)} kg
                           </span>
                         </div>
                       )}
-                      <div className="flex items-center gap-1.5 text-mint-600">
-                        <TrendingUp className="w-3.5 h-3.5" />
+                      <div className="flex items-center gap-1.5 text-mint-600 min-w-0">
+                        <TrendingUp className="w-3.5 h-3.5 shrink-0" />
                         <span className="font-semibold">
                           {w.running_equivalent_km.toFixed(1)}
                         </span>
