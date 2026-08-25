@@ -28,17 +28,31 @@ async def lifespan(app: FastAPI):
         from pathlib import Path
 
         from alembic.config import Config
-        from alembic.runtime import migration
         from alembic.script import ScriptDirectory
         from sqlalchemy import text
 
         from database import engine as _engine
 
-        root = Path(__file__).resolve().parent.parent
-        cfg = Config(str(root / "alembic.ini"))
-        cfg.set_main_option(
-            "script_location", str(root / "alembic")
-        )
+        # Tenta vários candidatos para encontrar o `alembic.ini`:
+        # 1. /code/alembic.ini (Render/Docker)
+        # 2. <raiz do package app>/../alembic.ini (dev)
+        # 3. cwd/alembic.ini
+        candidates = [
+            Path("/code/alembic.ini"),
+            Path(__file__).resolve().parent.parent / "alembic.ini",
+            Path.cwd() / "alembic.ini",
+        ]
+        cfg_path = next((p for p in candidates if p.exists()), None)
+        if cfg_path is None:
+            raise FileNotFoundError(
+                f"alembic.ini não encontrado em { [str(p) for p in candidates] }"
+            )
+
+        cfg = Config(str(cfg_path))
+        # Aponta o script_location para a pasta `alembic/` adjacente
+        # ao `alembic.ini` (em prod está em /code/alembic).
+        cfg.set_main_option("script_location", str(cfg_path.parent / "alembic"))
+
         script_dir = ScriptDirectory.from_config(cfg)
         head = script_dir.get_current_head()
 

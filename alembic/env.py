@@ -20,12 +20,21 @@ from sqlalchemy import engine_from_config, pool
 
 from alembic import context
 
-ROOT = Path(__file__).resolve().parent.parent
-APP_DIR = ROOT / "app"
+# Procurar a raiz do projecto (onde está `app/`). Tenta vários candidatos
+# para suportar dev local e Docker (/code).
+PROJECT_ROOTS = [
+    Path("/code"),  # Render/Docker
+    Path(__file__).resolve().parent.parent,  # dev: alembic/ está aqui
+    Path.cwd(),
+]
+PROJECT_ROOT = next(
+    (p for p in PROJECT_ROOTS if (p / "app").is_dir()), PROJECT_ROOTS[1]
+)
+APP_DIR = PROJECT_ROOT / "app"
 
 # Carregamento como pacote: o pai de `app` tem de estar no path para que
 # `import app.models` resolva o `models.py` de dentro do package.
-sys.path.insert(0, str(ROOT))
+sys.path.insert(0, str(PROJECT_ROOT))
 # `app/` no path mantém compatibilidade com o import não-relativo
 # `from database import Base` que está em `app/models.py`.
 sys.path.insert(0, str(APP_DIR))
@@ -55,6 +64,11 @@ if db_url:
 
 if config.config_file_name is not None:
     fileConfig(config.config_file_name)
+
+# Garante que o `script_location` do `alembic.ini` aponta para a pasta
+# `alembic/` que acabámos de descobrir (evita paths relativos errados
+# quando o CLI é invocado de outro cwd).
+config.set_main_option("script_location", str(PROJECT_ROOT / "alembic"))
 
 target_metadata = Base.metadata
 
