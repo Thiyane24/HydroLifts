@@ -162,6 +162,26 @@ export const workoutsApi = {
   },
 }
 
+export interface WorkoutTemplate {
+  template_id: number
+  user_id: number
+  name: string
+  workout_type: 'gym' | 'swim'
+  data: string // JSON string
+}
+
+export const templatesApi = {
+  create(payload: { name: string; workout_type: 'gym' | 'swim'; data: string }) {
+    return api.post('/templates', payload)
+  },
+  list() {
+    return api.get<WorkoutTemplate[]>('/templates')
+  },
+  delete(templateId: number) {
+    return api.delete(`/templates/${templateId}`)
+  },
+}
+
 export const analyticsApi = {
   weeklySummary() {
     return api.get<WeeklySummary>('/analytics/weekly-summary')

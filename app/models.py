@@ -28,6 +28,24 @@ class Usuario(Base):
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     meus_treinos = relationship("Workout", back_populates="dono_do_treino")
+    meus_templates = relationship("WorkoutTemplate", back_populates="dono_do_template")
+
+
+class WorkoutTemplate(Base):
+    __tablename__ = "workout_templates"
+
+    template_id = Column(Integer, primary_key=True, index=True, autoincrement=True)
+    user_id = Column(
+        Integer, ForeignKey("usuarios.user_id", ondelete="CASCADE"), nullable=False
+    )
+    name = Column(String, nullable=False)
+    workout_type = Column(String, nullable=False)
+
+    # Template data stored as JSON for simplicity and flexibility
+    # stores a list of exercises/sets
+    data = Column(String, nullable=False)
+
+    dono_do_template = relationship("Usuario", back_populates="meus_templates")
 
 
 class Workout(Base):
@@ -89,7 +107,7 @@ class GymExercise(Base):
     # --- helpers ---
     @property
     def weight_kg(self) -> Decimal | None:
-        """Devolve o peso em kg, ou None se não foi registado."""
+        """Devolve o peso em kg, ou None se não foi registrado."""
         if self.weight_value is None:
             return None
         if self.weight_unit == "lb":

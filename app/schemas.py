@@ -2,7 +2,7 @@ from datetime import date, datetime
 from decimal import Decimal
 from typing import List, Literal, Optional
 
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, model_validator, field_validator
 
 
 # --- SCHEMAS DE GINÁSIO ---
@@ -44,6 +44,11 @@ class GymExerciseBase(BaseModel):
     reps: int = Field(gt=0)
     weight_value: Optional[Decimal] = Field(default=None, gt=0)
     weight_unit: Optional[WeightUnit] = None
+
+    @field_validator("exercise_name")
+    @classmethod
+    def trim_exercise_name(cls, v: str) -> str:
+        return v.strip()
 
     @model_validator(mode="after")
     def _check_weight_pair(self):
@@ -90,6 +95,11 @@ class WorkoutBase(BaseModel):
     workout_date: date
     workout_type: str
 
+    @field_validator("workout_type")
+    @classmethod
+    def trim_workout_type(cls, v: str) -> str:
+        return v.strip()
+
 
 class WorkoutCreate(WorkoutBase):
     exercicios_ginasio: Optional[List[GymExerciseCreate]] = []
@@ -129,12 +139,25 @@ class UserResponse(UserBase):
     model_config = ConfigDict(from_attributes=True)
 
 
-# --- SCHEMAS DE AUTENTICAÇÃO / JWT ---
+# --- SCHEMAS DE TEMPLATES ---
 
-class Token(BaseModel):
-    access_token: str
-    token_type: str
+class WorkoutTemplateBase(BaseModel):
+    name: str
+    workout_type: str
+    data: str  # JSON string of workout data
+
+    @field_validator("name")
+    @classmethod
+    def trim_name(cls, v: str) -> str:
+        return v.strip()
 
 
-class TokenData(BaseModel):
-    email: Optional[str] = None
+class WorkoutTemplateCreate(WorkoutTemplateBase):
+    pass
+
+
+class WorkoutTemplateResponse(WorkoutTemplateBase):
+    template_id: int
+    user_id: int
+
+    model_config = ConfigDict(from_attributes=True)

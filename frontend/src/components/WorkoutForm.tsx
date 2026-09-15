@@ -7,6 +7,8 @@ import {
   Save,
   Trash2,
   Waves,
+  Copy,
+  ListFilter,
 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
@@ -16,6 +18,8 @@ import {
   WeightUnit,
   WorkoutPayload,
   workoutsApi,
+  templatesApi,
+  WorkoutTemplate,
 } from '../lib/api'
 
 export type WorkoutKind = 'gym' | 'swim'
@@ -171,8 +175,9 @@ export function WorkoutForm({
   const [gym, setGym] = useState<GymRow[]>(seeded.gym)
   const [swim, setSwim] = useState<SwimRow[]>(seeded.swim)
   const [submitting, setSubmitting] = useState(false)
+  const [templates, setTemplates] = useState<WorkoutTemplate[]>([])
+  const [showTemplates, setShowTemplates] = useState(false)
 
-  // Reinicia estado sempre que o `initial` muda (ex.: abrir modal para outro treino).
   useEffect(() => {
     const s = seedFromInitial(initial)
     setKind(s.kind)
@@ -181,12 +186,70 @@ export function WorkoutForm({
     setSwim(s.swim)
   }, [initial])
 
+  useEffect(() => {
+    async function loadTemplates() {
+      try {
+        const { data } = await templatesApi.list()
+        setTemplates(data)
+      } catch {
+        // handled by interceptor
+      }
+    }
+    loadTemplates()
+  }, [])
+
   const isEditing = Boolean(initial)
   const isValid = useMemo(() => {
     if (!date) return false
     if (kind === 'gym') return isGymValid(gym)
     return isSwimValid(swim)
   }, [kind, date, gym, swim])
+
+  const handleSaveTemplate = async () => {
+    const name = prompt('Nome do Template:')
+    if (!name) return
+
+    try {
+      const payload = kind === 'gym'
+        ? {
+            name,
+            workout_type: 'gym',
+            data: JSON.stringify(gym),
+          }
+        : {
+            name,
+            workout_type: 'swim',
+            data: JSON.stringify(swim),
+          }
+      await templatesApi.create(payload)
+      toast.success('Template guardado!')
+      const { data } = await templatesApi.list()
+      setTemplates(data)
+    } catch {
+      // interceptor
+    }
+  }
+
+  const handleLoadTemplate = (template: WorkoutTemplate) => {
+    if (template.workout_type !== kind) {
+      toast.error('Este template é de um tipo diferente (Ginásio/Natação).')
+      return
+    }
+
+    try {
+      if (kind === 'gym') {
+        const data = JSON.parse(template.data) as GymRow[]
+        setGym(data)
+      } else {
+        const data = JSON.parse(template.data) as SwimRow[]
+        setSwim(data)
+      }
+      toast.success('Template carregado!')
+    } catch {
+      toast.error('Erro ao carregar dados do template.')
+    }
+    setShowTemplates(false)
+  }
 
   const onSubmit = async (e: FormEvent) => {
     e.preventDefault()
@@ -286,13 +349,35 @@ export function WorkoutForm({
 
       {/* DATA */}
       <div className="card p-5">
-        <label
-          htmlFor="workout-date"
-          className="flex items-center gap-2 text-sm font-medium text-navy-700 mb-2"
-        >
-          <CalendarDays className="w-4 h-4 text-pool-600" />
-          Data do treino
-        </label>
+        <div className="flex items-center justify-between mb-2">
+          <label
+            htmlFor="workout-date"
+            className="flex items-center gap-2 text-sm font-medium text-navy-700"
+          >
+            <CalendarDays className="w-4 h-4 text-pool-600" />
+            Data do treino
+          </label>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              onClick={() => setShowTemplates(!showTemplates)}
+              className="btn-ghost p-1.5 text-xs flex items-center gap-1"
+              aria-label="Carregar Template"
+            >
+              <ListFilter className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Templates</span>
+            </button>
+            <button
+              type="button"
+              onClick={handleSaveTemplate}
+              className="btn-ghost p-1.5 text-xs flex items-center gap-1"
+              aria-label="Guardar como Template"
+            >
+              <Copy className="w-3.5 h-3.5" />
+              <span className="hidden xs:inline">Guardar</span>
+            </button>
+          </div>
+        </div>
         <input
           id="workout-date"
           type="date"
@@ -301,6 +386,28 @@ export function WorkoutForm({
           onChange={(e) => setDate(e.target.value)}
           className="input-base"
         />
+        {showTemplates && (
+          <div className="mt-3 p-3 rounded-xl bg-navy-50 border border-navy-100 max-h-40 overflow-y-auto">
+            <p className="text-xs font-semibold text-navy-700 mb-2">Os teus templates:</p>
+            {templates.length === 0 ? (
+              <p className="text-xs text-navy-700/50 italic">Nenhum template criado.</p>
+            ) : (
+              <ul className="space-y-1">
+                {templates.map((t) => (
+                  <li key={t.template_id}>
+                    <button
+                      type="button"
+                      onClick={() => handleLoadTemplate(t)}
+                      className="w-full text-left px-2 py-1.5 rounded-md text-xs text-navy-700 hover:bg-white hover:text-pool-700 transition"
+                    >
+                      {t.name}
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
       </div>
 
       {/* LISTA DINÂMICA */}

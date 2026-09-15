@@ -2,10 +2,11 @@ import logging
 from contextlib import asynccontextmanager
 import os
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse
 from fastapi.middleware.cors import CORSMiddleware
 
-from routers import analytics, auth, workouts
+from routers import analytics, auth, workouts, templates
 
 logger = logging.getLogger("uvicorn.error")
 
@@ -85,6 +86,17 @@ app = FastAPI(
     lifespan=lifespan,
 )
 
+@app.exception_handler(Exception)
+async def global_exception_handler(request: Request, exc: Exception):
+    logger.error(f"Unhandled exception occurred: {exc}", exc_info=True)
+    return JSONResponse(
+        status_code=500,
+        content={
+            "error": "Internal Server Error",
+            "detail": "An unexpected error occurred. Please contact support if the problem persists.",
+        },
+    )
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=ALLOWED_ORIGINS,
@@ -96,6 +108,7 @@ app.add_middleware(
 app.include_router(auth.router, tags=["Autenticação"])
 app.include_router(workouts.router, tags=["Treinos"])
 app.include_router(analytics.router, tags=["Analytics"])
+app.include_router(templates.router, tags=["Templates"])
 
 
 @app.get("/")

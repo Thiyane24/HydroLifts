@@ -34,7 +34,7 @@ const tones: Record<NonNullable<MetricCardProps['tone']>, string> = {
 
 function MetricCard({ icon, label, value, hint, tone = 'pool' }: MetricCardProps) {
   return (
-    <div className="card p-5 flex flex-col gap-3">
+    <section className="card p-5 flex flex-col gap-3">
       <div className={`w-10 h-10 rounded-xl flex items-center justify-center ${tones[tone]}`}>
         {icon}
       </div>
@@ -45,7 +45,7 @@ function MetricCard({ icon, label, value, hint, tone = 'pool' }: MetricCardProps
         <p className="text-3xl font-extrabold text-navy-900 mt-1 leading-none">{value}</p>
         {hint && <p className="text-xs text-navy-700/60 mt-1.5">{hint}</p>}
       </div>
-    </div>
+    </section>
   )
 }
 
@@ -73,7 +73,15 @@ function ProgressRing({
 
   return (
     <div className="flex flex-col sm:flex-row items-center gap-6">
-      <div className="relative" style={{ width: size, height: size }}>
+      <div
+        className="relative"
+        style={{ width: size, height: size }}
+        role="progressbar"
+        aria-valuenow={value}
+        aria-valuemin={0}
+        aria-valuemax={max}
+        aria-label={label}
+      >
         <svg width={size} height={size} className="-rotate-90">
           <circle
             cx={size / 2}
@@ -170,17 +178,23 @@ export function DashboardView() {
 
   const handleDelete = async () => {
     if (!deleting) return
+
+    const originalWorkouts = [...workouts]
+    const targetId = deleting.workout_id
+
+    // Optimistic update: remove immediately
+    setWorkouts((prev) => prev.filter((w) => w.workout_id !== targetId))
     setDeletingLoading(true)
+
     try {
-      await workoutsApi.delete(deleting.workout_id)
-      // Remove imediatamente do estado local (sem reload)
-      setWorkouts((prev) => prev.filter((w) => w.workout_id !== deleting.workout_id))
+      await workoutsApi.delete(targetId)
       toast.success('Treino removido com sucesso!')
       setDeleting(null)
-      // Atualiza o resumo semanal em background
       void refreshWeeklySummary()
-    } catch {
-      // interceptor já mostra o erro
+    } catch (err) {
+      // Restore on failure
+      setWorkouts(originalWorkouts)
+      toast.error('Erro ao remover treino. Tente novamente.')
     } finally {
       setDeletingLoading(false)
     }

@@ -1,7 +1,8 @@
 from datetime import date, datetime, timedelta, timezone
+from dateutil.relativedelta import relativedelta
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import func
+from sqlalchemy import func, case
 from sqlalchemy.orm import Session
 
 import models
@@ -31,9 +32,7 @@ def _intervalo_treinos(query, user_id: int, inicio: date, fim_exclusivo: date):
 
 
 def _aggregados(db: Session, ids_treinos: list[int]) -> dict:
-    """Calcula os agregados para a lista de workout_ids. Devolve dict com
-    `total_workouts`, `total_gym_sets`, `total_gym_reps`, `total_swim_m`,
-    `running_equivalent_km`, `max_weight_kg` (None se não houver peso)."""
+    """Calcula os agregados para a lista de workout_ids."""
     if not ids_treinos:
         return {
             "total_workouts": 0,
@@ -48,9 +47,29 @@ def _aggregados(db: Session, ids_treinos: list[int]) -> dict:
         db.query(
             func.coalesce(func.sum(models.GymExercise.sets), 0).label("total_sets"),
             func.coalesce(func.sum(models.GymExercise.reps), 0).label("total_reps"),
+            func.max(
+                case(
+                    (models.GymExercise.weight_unit == "lb", models.GymExercise.weight_value * 0.45359237),
+                    else_=models.GymExercise.weight_value
+                )
+            ).label("max_weight_gym"),
         )
         .filter(models.GymExercise.workout_id.in_(ids_treinos))
         .first()
+    )
+
+    max_weight_set = (
+        db.query(
+            func.max(
+                case(
+                    (models.GymSetDetail.weight_unit == "lb", models.GymSetDetail.weight_value * 0.45359237),
+                    else_=models.GymSetDetail.weight_value
+                )
+            )
+        )
+        .join(models.GymExercise)
+        .filter(models.GymExercise.workout_id.in_(ids_treinos))
+        .scalar()
     )
 
     swim_stats = (
@@ -63,58 +82,13 @@ def _aggregados(db: Session, ids_treinos: list[int]) -> dict:
         .first()
     )
 
-    # Peso máximo (em kg) carregado no ginásio. Procuramos separadamente
-    # em GymExercise e GymSetDetail; o MAX entre ambos.
-    peso_exercicio = (
-        db.query(func.max(models.GymExercise.weight_value))
-        .filter(
-            models.GymExercise.workout_id.in_(ids_treinos),
-            models.GymExercise.weight_unit == "kg",
-            models.GymExercise.weight_value.is_not(None),
-        )
-        .scalar()
-    )
-    peso_exercicio_lb = (
-        db.query(func.max(models.GymExercise.weight_value))
-        .filter(
-            models.GymExercise.workout_id.in_(ids_treinos),
-            models.GymExercise.weight_unit == "lb",
-            models.GymExercise.weight_value.is_not(None),
-        )
-        .scalar()
-    )
-    peso_set = (
-        db.query(func.max(models.GymSetDetail.weight_value))
-        .join(models.GymExercise, models.GymExercise.exercise_id == models.GymSetDetail.exercise_id)
-        .filter(
-            models.GymExercise.workout_id.in_(ids_treinos),
-            models.GymSetDetail.weight_unit == "kg",
-            models.GymSetDetail.weight_value.is_not(None),
-        )
-        .scalar()
-    )
-    peso_set_lb = (
-        db.query(func.max(models.GymSetDetail.weight_value))
-        .join(models.GymExercise, models.GymExercise.exercise_id == models.GymSetDetail.exercise_id)
-        .filter(
-            models.GymExercise.workout_id.in_(ids_treinos),
-            models.GymSetDetail.weight_unit == "lb",
-            models.GymSetDetail.weight_value.is_not(None),
-        )
-        .scalar()
-    )
+    candidates = []
+    if gym_stats and gym_stats.max_weight_gym is not None:
+        candidates.append(float(gym_stats.max_weight_gym))
+    if max_weight_set is not None:
+        candidates.append(float(max_weight_set))
 
-    max_kg_candidates = []
-    if peso_exercicio is not None:
-        max_kg_candidates.append(float(peso_exercicio))
-    if peso_exercicio_lb is not None:
-        max_kg_candidates.append(float(peso_exercicio_lb) * 0.45359237)
-    if peso_set is not None:
-        max_kg_candidates.append(float(peso_set))
-    if peso_set_lb is not None:
-        max_kg_candidates.append(float(peso_set_lb) * 0.45359237)
-
-    max_weight_kg = round(max(max_kg_candidates), 2) if max_kg_candidates else None
+    max_weight_kg = round(max(candidates), 2) if candidates else None
 
     total_swim_m = float(swim_stats.total_m)
     swim_km = total_swim_m / 1000.0
@@ -158,7 +132,6 @@ def resumo_mensal(
     db: Session = Depends(get_db),
     utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
 ):
-    """Resumo do mês ISO atual (UTC) com breakdown por semana."""
     hoje = datetime.now(timezone.utc).date()
     inicio_mes = _inicio_mes(hoje)
     if inicio_mes.month == 12:
@@ -166,7 +139,6 @@ def resumo_mensal(
     else:
         proximo_mes = inicio_mes.replace(month=inicio_mes.month + 1)
 
-    # 1. Agregados do mês
     treinos_mes = _intervalo_treinos(
         db.query(models.Workout),
         utilizador_atual.user_id,
@@ -178,7 +150,6 @@ def resumo_mensal(
     payload["month_start"] = inicio_mes.isoformat()
     payload["month_end"] = (proximo_mes - timedelta(days=1)).isoformat()
 
-    # 2. Breakdown por semana ISO dentro do mês
     semanas: list[dict] = []
     cursor = _inicio_semana_iso(inicio_mes)
     semana_idx = 1
@@ -201,3 +172,37 @@ def resumo_mensal(
 
     payload["weeks"] = semanas
     return payload
+
+
+@router.get("/analytics/trends")
+def tendencias(
+    db: Session = Depends(get_db),
+    utilizador_atual: models.Usuario = Depends(security.obter_usuario_atual),
+):
+    """Devolve a evolução de volume e força nos últimos 12 meses."""
+    hoje = datetime.now(timezone.utc).date()
+    tendencias = []
+
+    for i in range(11, -1, -1):
+        mes_ref = hoje - relativedelta(months=i)
+        inicio = _inicio_mes(mes_ref)
+        # Fim do mês = início do próximo mês
+        fim = inicio + relativedelta(months=1)
+
+        treinos = _intervalo_treinos(
+            db.query(models.Workout),
+            utilizador_atual.user_id,
+            inicio,
+            fim,
+        ).all()
+        ids = [t.workout_id for t in treinos]
+        ag = _aggregados(db, ids)
+
+        tendencias.append({
+            "month": inicio.strftime("%b %Y"),
+            "volume": ag["total_gym_sets"],
+            "max_weight": ag["max_weight_kg"],
+            "swim_m": ag["total_swim_m"]
+        })
+
+    return tendencias
