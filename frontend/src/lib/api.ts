@@ -189,4 +189,7 @@ export const analyticsApi = {
   monthlySummary() {
     return api.get<MonthlySummary>('/analytics/monthly-summary')
   },
+  trends() {
+    return api.get('/analytics/trends')
+  },
 }

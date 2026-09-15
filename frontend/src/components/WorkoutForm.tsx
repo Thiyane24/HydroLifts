@@ -213,12 +213,12 @@ export function WorkoutForm({
       const payload = kind === 'gym'
         ? {
             name,
-            workout_type: 'gym',
+            workout_type: 'gym' as const,
             data: JSON.stringify(gym),
           }
         : {
             name,
-            workout_type: 'swim',
+            workout_type: 'swim' as const,
             data: JSON.stringify(swim),
           }
       await templatesApi.create(payload)
@@ -347,37 +347,51 @@ export function WorkoutForm({
         </div>
       </div>
 
+      {/* TEMPLATES SECTION */}
+      <section className="card p-5 bg-pool-50/30 border-pool-100">
+        <div className="flex items-center justify-between mb-3">
+          <div className="flex items-center gap-2">
+            <ListFilter className="w-4 h-4 text-pool-600" />
+            <h3 className="text-sm font-bold text-navy-900">Templates de Treino</h3>
+          </div>
+          <button
+            type="button"
+            onClick={handleSaveTemplate}
+            className="btn-ghost p-1.5 text-xs flex items-center gap-1 hover:bg-white transition"
+          >
+            <Copy className="w-3.5 h-3.5" />
+            Guardar Atual
+          </button>
+        </div>
+        {templates.length === 0 ? (
+          <p className="text-xs text-navy-700/50 italic">Ainda não criaste templates.</p>
+        ) : (
+          <div className="flex flex-wrap gap-2">
+            {templates
+              .filter((t) => t.workout_type === kind)
+              .map((t) => (
+                <button
+                  key={t.template_id}
+                  type="button"
+                  onClick={() => handleLoadTemplate(t)}
+                  className="px-3 py-1.5 rounded-full bg-white border border-pool-200 text-xs font-medium text-navy-700 hover:border-pool-500 hover:text-pool-700 transition shadow-sm"
+                >
+                  {t.name}
+                </button>
+              ))}
+          </div>
+        )}
+      </section>
+
       {/* DATA */}
       <div className="card p-5">
-        <div className="flex items-center justify-between mb-2">
-          <label
-            htmlFor="workout-date"
-            className="flex items-center gap-2 text-sm font-medium text-navy-700"
-          >
-            <CalendarDays className="w-4 h-4 text-pool-600" />
-            Data do treino
-          </label>
-          <div className="flex items-center gap-1">
-            <button
-              type="button"
-              onClick={() => setShowTemplates(!showTemplates)}
-              className="btn-ghost p-1.5 text-xs flex items-center gap-1"
-              aria-label="Carregar Template"
-            >
-              <ListFilter className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Templates</span>
-            </button>
-            <button
-              type="button"
-              onClick={handleSaveTemplate}
-              className="btn-ghost p-1.5 text-xs flex items-center gap-1"
-              aria-label="Guardar como Template"
-            >
-              <Copy className="w-3.5 h-3.5" />
-              <span className="hidden xs:inline">Guardar</span>
-            </button>
-          </div>
-        </div>
+        <label
+          htmlFor="workout-date"
+          className="flex items-center gap-2 text-sm font-medium text-navy-700 mb-2"
+        >
+          <CalendarDays className="w-4 h-4 text-pool-600" />
+          Data do treino
+        </label>
         <input
           id="workout-date"
           type="date"
@@ -386,28 +400,6 @@ export function WorkoutForm({
           onChange={(e) => setDate(e.target.value)}
           className="input-base"
         />
-        {showTemplates && (
-          <div className="mt-3 p-3 rounded-xl bg-navy-50 border border-navy-100 max-h-40 overflow-y-auto">
-            <p className="text-xs font-semibold text-navy-700 mb-2">Os teus templates:</p>
-            {templates.length === 0 ? (
-              <p className="text-xs text-navy-700/50 italic">Nenhum template criado.</p>
-            ) : (
-              <ul className="space-y-1">
-                {templates.map((t) => (
-                  <li key={t.template_id}>
-                    <button
-                      type="button"
-                      onClick={() => handleLoadTemplate(t)}
-                      className="w-full text-left px-2 py-1.5 rounded-md text-xs text-navy-700 hover:bg-white hover:text-pool-700 transition"
-                    >
-                      {t.name}
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            )}
-          </div>
-        )}
       </div>
 
       {/* LISTA DINÂMICA */}

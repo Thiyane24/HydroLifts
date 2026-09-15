@@ -9,7 +9,6 @@ import {
   ResponsiveContainer,
   BarChart,
   Bar,
-  Legend,
 } from 'recharts'
 import { Activity, TrendingUp, Waves, Dumbbell } from 'lucide-react'
 import { analyticsApi } from '../lib/api'
