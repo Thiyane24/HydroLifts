@@ -11,6 +11,7 @@ import { AuthView } from './pages/AuthView'
 import { DashboardView } from './pages/DashboardView'
 import { LogWorkoutView } from './pages/LogWorkoutView'
 import { MonthlyReportView } from './pages/MonthlyReportView'
+import { AnalyticsDashboardView } from './pages/AnalyticsDashboardView'
 
 ReactDOM.createRoot(document.getElementById('root')!).render(
   <React.StrictMode>
@@ -32,6 +33,7 @@ ReactDOM.createRoot(document.getElementById('root')!).render(
             <Route path="/dashboard" element={<DashboardView />} />
             <Route path="/log" element={<LogWorkoutView />} />
             <Route path="/monthly" element={<MonthlyReportView />} />
+            <Route path="/analytics" element={<AnalyticsDashboardView />} />
           </Route>
 
           {/* Fallback */}
