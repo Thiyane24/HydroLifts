@@ -249,7 +249,7 @@ export function DashboardView() {
             aria-label="Ver relatório mensal"
           >
             <BarChart3 className="w-4 h-4" />
-            <span className="hidden xs:inline sm:inline">Ver mês</span>
+            <span className="hidden sm:inline">Ver mês</span>
             <span className="sm:hidden">Mês</span>
           </Link>
           <Link
@@ -258,12 +258,12 @@ export function DashboardView() {
             aria-label="Ver analytics avançado"
           >
             <TrendingUp className="w-4 h-4" />
-            <span className="hidden xs:inline sm:inline">Analytics</span>
+            <span className="hidden sm:inline">Analytics</span>
             <span className="sm:hidden">Anl.</span>
           </Link>
           <Link to="/log" className="btn-primary">
             <PlusCircle className="w-4 h-4" />
-            <span className="hidden xs:inline sm:inline">Registar treino</span>
+            <span className="hidden sm:inline">Registar treino</span>
             <span className="sm:hidden">Registar</span>
           </Link>
         </div>
